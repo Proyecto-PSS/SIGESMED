@@ -28,3 +28,5 @@ npm run start
 Importá el repositorio en Vercel y dejá que detecte Next.js. Los valores predeterminados son `npm run build` para build y configuración automática de output; no hace falta un `vercel.json` en un proyecto estándar de Next.js.
 
 Configurá los secretos y variables de entorno en Project Settings → Environment Variables de Vercel. Para variables accesibles desde el navegador se usa el prefijo `NEXT_PUBLIC_`; nunca pongas secretos en variables con ese prefijo. Para desarrollo local, usá `.env.local`, que Git ignora.
+
+Comision 7
