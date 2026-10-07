@@ -1,0 +1,157 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum EspecialidadMedica {
+  CLINICA_MEDICA
+  PEDIATRIA
+  TRAUMATOLOGIA_ORTOPEDIA
+}
+
+enum EstadoTurno {
+  DISPONIBLE
+  CONFIRMADO
+  CANCELADO
+  ATENDIDO
+}
+
+enum ModalidadTurno {
+  PARTICULAR
+  COBERTURA
+}
+
+enum EstadoTurnoVacunacion {
+  DISPONIBLE
+  CONFIRMADO
+  CANCELADO
+  APLICADO
+}
+
+model Medico {
+  idMedico     String             @id @map("id_medico")
+  nombre       String
+  apellido     String
+  especialidad EspecialidadMedica
+  matricula    String             @unique
+  consultorio  String?
+  direccion    String?
+  createdAt    DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  disponibilidades DisponibilidadMedica[]
+  turnos           Turno[]
+
+  @@map("medicos")
+}
+
+model Paciente {
+  // Usar el ID estable del proveedor de autenticación (por ejemplo, Clerk) como ID.
+  idPaciente String   @id @map("id_paciente")
+  nombre     String
+  apellido   String
+  dni        String   @unique
+  email      String   @unique
+  telefono   String?
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  turnos            Turno[]
+  turnosVacunacion  TurnoVacunacion[]
+
+  @@map("pacientes")
+}
+
+model DisponibilidadMedica {
+  idDisponibilidadMedica String   @id @default(cuid()) @map("id_disponibilidad_medica")
+  idMedico               String   @map("id_medico")
+  mesVigencia            DateTime @map("mes_vigencia") @db.Date
+  diaSemana              Int      @map("dia_semana") @db.SmallInt
+  horaDesde              String   @map("hora_desde") @db.VarChar(5)
+  horaHasta              String   @map("hora_hasta") @db.VarChar(5)
+  duracionTurnoMinutos   Int      @map("duracion_turno_minutos") @db.SmallInt
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt              DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  medico Medico  @relation(fields: [idMedico], references: [idMedico], onDelete: Cascade)
+  turnos Turno[]
+
+  // Una franja por médico, mes y día de la semana.
+  @@unique([idMedico, mesVigencia, diaSemana])
+  @@index([mesVigencia])
+  @@map("disponibilidades_medicas")
+}
+
+model Turno {
+  idTurno                String       @id @default(cuid()) @map("id_turno")
+  idMedico               String       @map("id_medico")
+  idPaciente             String?      @map("id_paciente")
+  idDisponibilidadMedica String       @map("id_disponibilidad_medica")
+  fecha                  DateTime     @db.Date
+  hora                   String       @db.VarChar(5)
+  duracionMinutos        Int          @map("duracion_minutos") @db.SmallInt
+  estado                 EstadoTurno  @default(DISPONIBLE)
+  modalidad              ModalidadTurno?
+  motivoCancelacion      String?      @map("motivo_cancelacion")
+  confirmacionEnviadaAt  DateTime?    @map("confirmacion_enviada_at") @db.Timestamptz(3)
+  recordatorioEnviadoAt  DateTime?    @map("recordatorio_enviado_at") @db.Timestamptz(3)
+  createdAt              DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  medico        Medico               @relation(fields: [idMedico], references: [idMedico], onDelete: Restrict)
+  paciente      Paciente?            @relation(fields: [idPaciente], references: [idPaciente], onDelete: SetNull)
+  disponibilidad DisponibilidadMedica @relation(fields: [idDisponibilidadMedica], references: [idDisponibilidadMedica], onDelete: Restrict)
+
+  @@unique([idMedico, fecha, hora])
+  @@index([idMedico, fecha])
+  @@index([estado, fecha])
+  @@index([idDisponibilidadMedica, fecha])
+  @@map("turnos")
+}
+
+model Enfermero {
+  idEnfermero String   @id @default(cuid()) @map("id_enfermero")
+  nombre      String
+  apellido    String?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  turnos TurnoVacunacion[]
+
+  @@map("enfermeros")
+}
+
+model Vacuna {
+  idVacuna  String   @id @default(cuid()) @map("id_vacuna")
+  nombre    String   @unique
+  stock     Int      @default(0)
+  createdAt DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  turnos TurnoVacunacion[]
+
+  @@map("vacunas")
+}
+
+model TurnoVacunacion {
+  idTurnoVacunacion String                 @id @default(cuid()) @map("id_turno_vacunacion")
+  idPaciente        String?                @map("id_paciente")
+  idEnfermero       String                 @map("id_enfermero")
+  idVacuna          String                 @map("id_vacuna")
+  fecha             DateTime               @db.Date
+  hora              String                 @db.VarChar(5)
+  estado            EstadoTurnoVacunacion  @default(DISPONIBLE)
+  createdAt         DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  paciente  Paciente? @relation(fields: [idPaciente], references: [idPaciente], onDelete: SetNull)
+  enfermero Enfermero @relation(fields: [idEnfermero], references: [idEnfermero], onDelete: Restrict)
+  vacuna    Vacuna    @relation(fields: [idVacuna], references: [idVacuna], onDelete: Restrict)
+
+  @@unique([idEnfermero, fecha, hora])
+  @@index([idPaciente, fecha])
+  @@index([idVacuna, fecha])
+  @@map("turnos_vacunacion")
+}

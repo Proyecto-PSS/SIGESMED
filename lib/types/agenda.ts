@@ -2,8 +2,6 @@ export type DiaSemana = 1 | 2 | 3 | 4 | 5 | 6 // 1: Lunes, 2: Martes, 3: Miérco
 
 export type DuracionTurno = 20 | 30 | 45
 
-export type EstadoDisponibilidad = 'BORRADOR' | 'PUBLICADO'
-
 export type EstadoTurno = 'DISPONIBLE' | 'CONFIRMADO' | 'CANCELADO' | 'ATENDIDO'
 
 export interface DisponibilidadMedica {
@@ -14,7 +12,6 @@ export interface DisponibilidadMedica {
   hora_desde: string // Formato HH:mm
   hora_hasta: string // Formato HH:mm
   duracion_turno_minutos: DuracionTurno
-  estado: EstadoDisponibilidad
   cantidad_turnos: number
   created_at: string
   updated_at: string

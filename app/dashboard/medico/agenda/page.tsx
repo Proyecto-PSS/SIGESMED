@@ -4,14 +4,12 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import MonthSelector from '@/components/agenda/MonthSelector'
 import DaySelector from '@/components/agenda/DaySelector'
 import ShiftConfigCard from '@/components/agenda/ShiftConfigCard'
-import PublishModal from '@/components/agenda/PublishModal'
 import CalendarView from '@/components/agenda/CalendarView'
 import {
   DiaSemana,
   DuracionTurno,
   DisponibilidadMedica,
   Turno,
-  ResumenPublicacion,
 } from '@/lib/types/agenda'
 import {
   calcularTurnosPosibles,
@@ -25,11 +23,10 @@ interface ShiftDraft {
   horaDesde: string
   horaHasta: string
   duracion: DuracionTurno
-  estado?: 'BORRADOR' | 'PUBLICADO'
 }
 
 export default function AgendaMedicaPage() {
-  const [tab, setTab] = useState<'disponibilidad' | 'publicada'>('disponibilidad')
+  const [tab, setTab] = useState<'disponibilidad' | 'agenda'>('disponibilidad')
   const [currentMonth, setCurrentMonth] = useState<string>('2024-11')
   const [shifts, setShifts] = useState<ShiftDraft[]>([
     {
@@ -37,19 +34,17 @@ export default function AgendaMedicaPage() {
       horaDesde: '08:00',
       horaHasta: '13:00',
       duracion: 30,
-      estado: 'BORRADOR',
     },
     {
       diaSemana: 4, // Jueves
       horaDesde: '14:00',
       horaHasta: '19:00',
       duracion: 30,
-      estado: 'BORRADOR',
     },
   ])
 
   const [saveStatus, setSaveStatus] = useState<
-    'guardado' | 'guardando' | 'borrador_local' | 'error'
+    'guardado' | 'guardando' | 'cambios_locales' | 'error'
   >('guardado')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
@@ -61,13 +56,7 @@ export default function AgendaMedicaPage() {
     matricula: 'MN-84920',
   })
 
-  // Modal de Publicación
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [resumenPublicacion, setResumenPublicacion] = useState<ResumenPublicacion | null>(null)
-  const [isPublishing, setIsPublishing] = useState(false)
-  const [publishError, setPublishError] = useState<string | null>(null)
-
-  // Agenda Publicada
+  // Turnos disponibles de la agenda
   const [turnosPublicados, setTurnosPublicados] = useState<Turno[]>([])
   const [isLoadingTurnos, setIsLoadingTurnos] = useState(false)
 
@@ -94,7 +83,6 @@ export default function AgendaMedicaPage() {
           horaDesde: d.hora_desde,
           horaHasta: d.hora_hasta,
           duracion: d.duracion_turno_minutos,
-          estado: d.estado,
         }))
         setShifts(loaded)
         setSaveStatus('guardado')
@@ -103,7 +91,7 @@ export default function AgendaMedicaPage() {
           const localDraft = localStorage.getItem(`sigesmed_draft_${mes}`)
           if (localDraft) {
             setShifts(JSON.parse(localDraft))
-            setSaveStatus('borrador_local')
+            setSaveStatus('cambios_locales')
             return
           }
         } catch {}
@@ -114,17 +102,15 @@ export default function AgendaMedicaPage() {
             horaDesde: '08:00',
             horaHasta: '13:00',
             duracion: 30,
-            estado: 'BORRADOR',
           },
           {
             diaSemana: 4,
             horaDesde: '14:00',
             horaHasta: '19:00',
             duracion: 30,
-            estado: 'BORRADOR',
           },
         ])
-        setSaveStatus('borrador_local')
+        setSaveStatus('cambios_locales')
       }
     } catch (err: any) {
       console.error(err)
@@ -132,7 +118,7 @@ export default function AgendaMedicaPage() {
     }
   }, [])
 
-  // Cargar turnos de la agenda publicada
+  // Cargar turnos disponibles de la agenda
   const cargarTurnosAgenda = useCallback(async (mes: string) => {
     try {
       setIsLoadingTurnos(true)
@@ -190,7 +176,7 @@ export default function AgendaMedicaPage() {
     const exists = shifts.some((s) => s.diaSemana === dia)
     if (exists) {
       setShifts(shifts.filter((s) => s.diaSemana !== dia))
-      setSaveStatus('borrador_local')
+      setSaveStatus('cambios_locales')
     } else {
       if (shifts.length >= 2) {
         setErrorMessage('Solo puedes seleccionar hasta 2 días semanales.')
@@ -203,10 +189,9 @@ export default function AgendaMedicaPage() {
           horaDesde: '08:00',
           horaHasta: '13:00',
           duracion: 30,
-          estado: 'BORRADOR',
         },
       ])
-      setSaveStatus('borrador_local')
+      setSaveStatus('cambios_locales')
     }
   }
 
@@ -220,25 +205,31 @@ export default function AgendaMedicaPage() {
     setShifts((prev) =>
       prev.map((s) => (s.diaSemana === dia ? { ...s, ...fields } : s))
     )
-    setSaveStatus('borrador_local')
+    setSaveStatus('cambios_locales')
   }
 
   // Eliminar franja
   const handleRemoveShift = async (dia: DiaSemana) => {
     setErrorMessage(null)
     const target = shifts.find((s) => s.diaSemana === dia)
-    if (target?.id && target.estado === 'BORRADOR') {
+    if (target?.id) {
       try {
-        await fetch(`/api/medicos/disponibilidad/${target.id}`, { method: 'DELETE' })
+        const res = await fetch(`/api/medicos/disponibilidad/${target.id}`, { method: 'DELETE' })
+        if (!res.ok) {
+          const data = await res.json()
+          throw new Error(data.error || 'No se pudo eliminar la disponibilidad')
+        }
       } catch (err) {
         console.error('Error eliminando en servidor:', err)
+        setErrorMessage(err instanceof Error ? err.message : 'No se pudo eliminar la disponibilidad')
+        return
       }
     }
     setShifts(shifts.filter((s) => s.diaSemana !== dia))
-    setSaveStatus('borrador_local')
+    setSaveStatus('cambios_locales')
   }
 
-  // Guardar borrador en el servidor
+  // Guardar disponibilidad y generar sus turnos disponibles en el servidor
   const handleGuardarBorrador = async () => {
     setErrorMessage(null)
     setSuccessMessage(null)
@@ -272,66 +263,12 @@ export default function AgendaMedicaPage() {
       }
 
       setSaveStatus('guardado')
-      setSuccessMessage('Disponibilidad guardada correctamente en borrador.')
-      await cargarDisponibilidades(currentMonth)
-    } catch (err: any) {
-      setSaveStatus('error')
-      setErrorMessage(err.message || 'Error al guardar borrador')
-    }
-  }
-
-  // Abrir modal de confirmación y revisión (US-04)
-  const handleRevisarYPublicar = async () => {
-    setErrorMessage(null)
-    setPublishError(null)
-
-    try {
-      await handleGuardarBorrador()
-
-      const res = await fetch(`/api/medicos/disponibilidad/resumen?mes=${currentMonth}`)
-      if (!res.ok) {
-        const errData = await res.json()
-        throw new Error(errData.error || 'Error al obtener resumen de publicación')
-      }
-
-      const data = await res.json()
-      setResumenPublicacion(data)
-      setIsModalOpen(true)
-    } catch (err: any) {
-      setErrorMessage(err.message || 'No se pudo generar el resumen de publicación')
-    }
-  }
-
-  // Confirmar y publicar agenda
-  const handleConfirmarPublicacion = async () => {
-    setIsPublishing(true)
-    setPublishError(null)
-
-    try {
-      const res = await fetch('/api/medicos/agenda/publicar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mes_vigencia: currentMonth }),
-      })
-
-      if (!res.ok) {
-        const errData = await res.json()
-        throw new Error(errData.error || 'Error al publicar agenda médica')
-      }
-
-      const data = await res.json()
-      setIsModalOpen(false)
-      setSuccessMessage(
-        `¡Agenda publicada con éxito! Se habilitaron ${data.total_turnos} turnos en ${data.total_jornadas} jornadas.`
-      )
-
+      setSuccessMessage('Disponibilidad guardada y turnos del mes generados correctamente.')
       await cargarDisponibilidades(currentMonth)
       await cargarTurnosAgenda(currentMonth)
-      setTab('publicada')
     } catch (err: any) {
-      setPublishError(err.message || 'Error durante la publicación de agenda')
-    } finally {
-      setIsPublishing(false)
+      setSaveStatus('error')
+      setErrorMessage(err.message || 'Error al guardar disponibilidad')
     }
   }
 
@@ -405,9 +342,9 @@ export default function AgendaMedicaPage() {
 
             <button
               type="button"
-              onClick={() => setTab('publicada')}
+              onClick={() => setTab('agenda')}
               className={`px-3.5 py-1.5 text-xs font-mono font-bold rounded-lg transition-all ${
-                tab === 'publicada'
+                tab === 'agenda'
                   ? 'bg-black text-white shadow-sm'
                   : 'text-slate-700 hover:text-black'
               }`}
@@ -519,10 +456,10 @@ export default function AgendaMedicaPage() {
                     <span className="w-2 h-2 rounded-full bg-emerald-500" />
                     <span>Guardado en servidor</span>
                   </>
-                ) : saveStatus === 'borrador_local' ? (
+                ) : saveStatus === 'cambios_locales' ? (
                   <>
                     <span className="w-2 h-2 rounded-full bg-amber-500" />
-                    <span>Borrador local actualizado</span>
+                    <span>Cambios sin guardar</span>
                   </>
                 ) : (
                   <>
@@ -540,17 +477,7 @@ export default function AgendaMedicaPage() {
                   disabled={saveStatus === 'guardando'}
                   className="w-full sm:w-auto px-4 py-2.5 text-xs font-mono font-bold text-slate-800 hover:text-black bg-slate-100 hover:bg-slate-200 rounded-lg border border-slate-300 transition-colors disabled:opacity-50"
                 >
-                  GUARDAR BORRADOR
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleRevisarYPublicar}
-                  disabled={shifts.length === 0 || saveStatus === 'guardando'}
-                  className="w-full sm:w-auto px-6 py-2.5 text-xs font-mono font-bold text-white bg-black hover:bg-slate-800 rounded-lg transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  <span>CONTINUAR</span>
-                  <span>&rarr;</span>
+                  GUARDAR DISPONIBILIDAD
                 </button>
               </div>
             </div>
@@ -558,7 +485,7 @@ export default function AgendaMedicaPage() {
         )}
 
         {/* PESTAÑA 2: AGENDA PUBLICADA */}
-        {tab === 'publicada' && (
+        {tab === 'agenda' && (
           <CalendarView
             currentMonth={currentMonth}
             turnos={turnosPublicados}
@@ -566,17 +493,6 @@ export default function AgendaMedicaPage() {
           />
         )}
 
-        {/* Modal de Confirmación de Apertura */}
-        <PublishModal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          onConfirm={handleConfirmarPublicacion}
-          resumen={resumenPublicacion}
-          medicoNombre={medico.nombre}
-          medicoEspecialidad={medico.especialidad}
-          isPublishing={isPublishing}
-          error={publishError}
-        />
       </div>
     </div>
   )
