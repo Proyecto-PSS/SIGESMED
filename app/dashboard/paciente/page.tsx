@@ -1,64 +1,50 @@
+import Link from 'next/link'
 import { UserButton } from '@clerk/nextjs'
 import Link from 'next/link'
 
 export default function PacienteDashboardPage() {
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-900 p-4 sm:p-6 lg:p-8">
-      <div className="max-w-5xl mx-auto space-y-6">
-        <header className="flex items-center justify-between gap-4 pb-4 border-b border-slate-200">
+    <div className="min-h-screen bg-[#f8fafc] p-4 text-slate-900 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-5xl space-y-6">
+        <header className="flex items-center justify-between gap-4 border-b border-slate-200 pb-4">
           <div>
-            <span className="text-[10px] font-mono uppercase tracking-widest text-slate-500 font-bold block">
-              Portal del Paciente
-            </span>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-              Mi Portal de Salud
-            </h1>
+            <span className="block text-[10px] font-mono font-bold uppercase tracking-widest text-slate-500">Portal del paciente</span>
+            <h1 className="text-xl font-bold tracking-tight sm:text-2xl">Mi Portal de Salud</h1>
           </div>
-
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 bg-white border border-slate-200 px-3 py-1.5 rounded-lg">
-              <span className="text-xs font-bold text-slate-900">Carlos Morales</span>
-              <span className="text-[10px] font-mono text-slate-500">DNI: 34.891.204</span>
-            </div>
-
-            <UserButton />
-          </div>
+          <UserButton />
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <section className="grid gap-4">
           <Link
             href="/dashboard/paciente/reservar-turno"
-            className="p-5 bg-white border border-slate-200 rounded-xl shadow-sm hover:border-slate-400 transition-colors"
+            className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-colors hover:border-slate-400"
           >
-            <span className="text-xs font-mono font-bold text-slate-500 uppercase block mb-1">
+            <span className="mb-1 block text-xs font-mono font-bold uppercase text-slate-500">
               Atención Médica
             </span>
-            <h2 className="text-base font-bold text-slate-900 mb-2">Solicitar Nuevo Turno</h2>
+            <h2 className="mb-2 text-base font-bold text-slate-900">
+              Solicitar Nuevo Turno
+            </h2>
             <p className="text-xs text-slate-600">
               Reserva de consultas con médicos clínicos, pediatras y traumatólogos según disponibilidad.
             </p>
           </Link>
-
-          <div className="p-5 bg-white border border-slate-200 rounded-xl shadow-sm">
-            <span className="text-xs font-mono font-bold text-slate-500 uppercase block mb-1">
-              Mis Citas
-            </span>
-            <h2 className="text-base font-bold text-slate-900 mb-2">Turnos Confirmados</h2>
-            <p className="text-xs text-slate-600">
-              Visualización de citas programadas y opción de cancelación con al menos 48 hs de anticipación.
-            </p>
-          </div>
-
-          <div className="p-5 bg-white border border-slate-200 rounded-xl shadow-sm">
-            <span className="text-xs font-mono font-bold text-slate-500 uppercase block mb-1">
-              Ficha Médica
-            </span>
-            <h2 className="text-base font-bold text-slate-900 mb-2">Mi Historial Clínico</h2>
-            <p className="text-xs text-slate-600">
-              Consulta de atenciones anteriores, prescripciones, diagnósticos y estudios solicitados.
-            </p>
-          </div>
-        </div>
+          <Link href="/dashboard/paciente/medicos" className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-slate-400">
+            <span className="mb-2 block text-xs font-mono font-bold uppercase text-slate-500">Profesionales</span>
+            <h2 className="text-lg font-bold">Médicos</h2>
+            <p className="mt-2 text-sm text-slate-600">Elegí un profesional y consultá sus días y horarios disponibles.</p>
+          </Link>
+          <article className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <span className="mb-2 block text-xs font-mono font-bold uppercase text-slate-500">Mis citas</span>
+            <h2 className="text-lg font-bold">Turnos confirmados</h2>
+            <p className="mt-2 text-sm text-slate-600">Visualización de citas programadas y opción de cancelación con al menos 48 hs de anticipación.</p>
+          </article>
+          <article className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <span className="mb-2 block text-xs font-mono font-bold uppercase text-slate-500">Ficha médica</span>
+            <h2 className="text-lg font-bold">Mi historial clínico</h2>
+            <p className="mt-2 text-sm text-slate-600">Consulta de atenciones anteriores, prescripciones, diagnósticos y estudios solicitados.</p>
+          </article>
+        </section>
       </div>
     </div>
   )

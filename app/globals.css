@@ -312,6 +312,15 @@ button:disabled {
   cursor: not-allowed;
 }
 
+/* Los hipervínculos usan texto negro; los botones oscuros conservan texto claro por contraste. */
+a:not([class*="bg-slate-950"]):not([class*="bg-black"]) {
+  color: #000000;
+}
+
+.pagina-horarios-medico a {
+  text-decoration: none;
+}
+
 .disabled\:opacity-30:disabled { opacity: 0.3; }
 .disabled\:opacity-40:disabled { opacity: 0.4; }
 .disabled\:opacity-50:disabled { opacity: 0.5; }
