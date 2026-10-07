@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { UserButton } from '@clerk/nextjs'
 
 export default function MedicoDashboardPage() {
   return (
@@ -13,9 +14,14 @@ export default function MedicoDashboardPage() {
               Dashboard Médico
             </h1>
           </div>
-          <div className="flex items-center gap-2 bg-white border border-slate-200 px-3 py-1.5 rounded-lg">
-            <span className="text-xs font-bold text-slate-900">Dr. Martín Gómez</span>
-            <span className="text-[10px] font-mono text-slate-500">Traumatología</span>
+
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 bg-white border border-slate-200 px-3 py-1.5 rounded-lg">
+              <span className="text-xs font-bold text-slate-900">Dr. Martín Gómez</span>
+              <span className="text-[10px] font-mono text-slate-500">Traumatología</span>
+            </div>
+
+            <UserButton />
           </div>
         </header>
 

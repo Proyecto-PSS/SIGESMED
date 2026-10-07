@@ -1,3 +1,5 @@
+import { UserButton } from '@clerk/nextjs'
+
 export default function EnfermeroDashboardPage() {
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 p-4 sm:p-6 lg:p-8">
@@ -11,9 +13,14 @@ export default function EnfermeroDashboardPage() {
               Dashboard de Enfermería
             </h1>
           </div>
-          <div className="flex items-center gap-2 bg-white border border-slate-200 px-3 py-1.5 rounded-lg">
-            <span className="text-xs font-bold text-slate-900">Enf. Valeria Ríos</span>
-            <span className="text-[10px] font-mono text-slate-500">Vacunatorio Central</span>
+
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 bg-white border border-slate-200 px-3 py-1.5 rounded-lg">
+              <span className="text-xs font-bold text-slate-900">Enf. Valeria Ríos</span>
+              <span className="text-[10px] font-mono text-slate-500">Vacunatorio Central</span>
+            </div>
+
+            <UserButton />
           </div>
         </header>
 
