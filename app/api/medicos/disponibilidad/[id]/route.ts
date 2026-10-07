@@ -4,7 +4,7 @@ import { AgendaService } from '@/lib/services/agenda-service'
 
 /**
  * PUT /api/medicos/disponibilidad/[id]
- * Modifica una disponibilidad en estado BORRADOR existente.
+ * Modifica una disponibilidad y regenera sus turnos disponibles.
  */
 export async function PUT(
   request: NextRequest,
@@ -44,7 +44,7 @@ export async function PUT(
 
 /**
  * DELETE /api/medicos/disponibilidad/[id]
- * Elimina una disponibilidad en estado BORRADOR.
+ * Elimina una disponibilidad y sus turnos libres asociados.
  */
 export async function DELETE(
   request: NextRequest,
@@ -62,7 +62,7 @@ export async function DELETE(
     })
   } catch (error: any) {
     const message = error.message || 'Error al eliminar configuración'
-    const status = error.statusCode || (message.includes('PUBLICADA') ? 409 : 400)
+    const status = error.statusCode || (message.includes('No se puede eliminar') ? 409 : 400)
     return NextResponse.json({ error: message }, { status })
   }
 }

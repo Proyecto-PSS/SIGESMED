@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/medicos/disponibilidad
- * Guarda o actualiza una disponibilidad en estado BORRADOR.
+ * Guarda o actualiza la disponibilidad y genera los turnos disponibles del mes.
  * Valida la regla de negocio de máximo 2 días semanales.
  */
 export async function POST(request: NextRequest) {
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { disponibilidad, esNueva } = await AgendaService.guardarDisponibilidad(
+    const { disponibilidad, esNueva, turnosGenerados } = await AgendaService.guardarDisponibilidad(
       medico.id,
       {
         mes_vigencia,
@@ -75,15 +75,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         message: esNueva
-          ? 'Disponibilidad creada exitosamente'
-          : 'Disponibilidad actualizada exitosamente',
+          ? 'Disponibilidad creada y turnos generados exitosamente'
+          : 'Disponibilidad actualizada y turnos regenerados exitosamente',
         disponibilidad,
+        turnos_generados: turnosGenerados,
       },
       { status: esNueva ? 201 : 200 }
     )
   } catch (error: any) {
     const message = error.message || 'Error al guardar disponibilidad'
-    const isConflict = message.includes('PUBLICADA')
+    const isConflict = message.includes('No se puede modificar')
     const isValidation =
       message.includes('Regla de negocio') ||
       message.includes('inválido') ||
