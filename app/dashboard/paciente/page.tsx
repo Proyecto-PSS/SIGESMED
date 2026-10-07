@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { UserButton } from '@clerk/nextjs'
-import Link from 'next/link'
 
 export default function PacienteDashboardPage() {
   return (
