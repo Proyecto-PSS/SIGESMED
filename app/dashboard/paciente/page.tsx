@@ -1,4 +1,5 @@
 import { UserButton } from '@clerk/nextjs'
+import Link from 'next/link'
 
 export default function PacienteDashboardPage() {
   return (
@@ -25,7 +26,10 @@ export default function PacienteDashboardPage() {
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-5 bg-white border border-slate-200 rounded-xl shadow-sm">
+          <Link
+            href="/dashboard/paciente/reservar-turno"
+            className="p-5 bg-white border border-slate-200 rounded-xl shadow-sm hover:border-slate-400 transition-colors"
+          >
             <span className="text-xs font-mono font-bold text-slate-500 uppercase block mb-1">
               Atención Médica
             </span>
@@ -33,7 +37,7 @@ export default function PacienteDashboardPage() {
             <p className="text-xs text-slate-600">
               Reserva de consultas con médicos clínicos, pediatras y traumatólogos según disponibilidad.
             </p>
-          </div>
+          </Link>
 
           <div className="p-5 bg-white border border-slate-200 rounded-xl shadow-sm">
             <span className="text-xs font-mono font-bold text-slate-500 uppercase block mb-1">
