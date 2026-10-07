@@ -1,4 +1,6 @@
 import { headers, cookies } from 'next/headers'
+import { auth, currentUser } from '@clerk/nextjs/server'
+import { prisma } from './prisma'
 import { MedicoPerfil } from './types/agenda'
 
 export interface SessionUser {
@@ -99,4 +101,28 @@ export async function getCurrentMedicalUser(): Promise<MedicoPerfil> {
   }
 
   return medico
+}
+
+export async function getCurrentPatient() {
+  const { userId } = await auth()
+  if (!userId) {
+    throw new Error('No autorizado: sesión de paciente no encontrada')
+  }
+
+  const user = await currentUser()
+  const email = user?.emailAddresses[0]?.emailAddress
+  const paciente = await prisma.paciente.findFirst({
+    where: {
+      OR: [
+        { idPaciente: userId },
+        ...(email ? [{ email }] : []),
+      ],
+    },
+  })
+
+  if (!paciente) {
+    throw new Error('No se encontró un paciente asociado a la sesión actual')
+  }
+
+  return paciente
 }
