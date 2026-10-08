@@ -1,6 +1,6 @@
 'use client'
 
-// Ejecuta la confirmación y muestra el resultado sin registrar reservas duplicadas.
+// Ejecuta la confirmación y maneja el conflicto cuando otro paciente tomó el turno.
 import Link from 'next/link'
 import { useState } from 'react'
 
@@ -15,16 +15,31 @@ export default function ConfirmarReserva({ idTurno, idMedico }: Props) {
 
   async function confirmar() {
     setEstado('cargando')
-    const response = await fetch(`/api/pacientes/turnos/${idTurno}/confirmar`, { method: 'POST' })
-    const data = await response.json()
+    setMensaje('')
 
-    if (!response.ok) {
-      setMensaje(data.error ?? 'No se pudo confirmar el turno')
+    try {
+      const response = await fetch(`/api/pacientes/turnos/${idTurno}/confirmar`, {
+        method: 'POST',
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        if (response.status === 409) {
+          setMensaje('Lo sentimos, este turno acaba de ser reservado por otro paciente.')
+        } else {
+          setMensaje(data.error ?? 'No se pudo confirmar el turno')
+        }
+
+        setEstado('error')
+        return
+      }
+
+      setEstado('confirmado')
+    } catch {
+      setMensaje('No se pudo contactar al servidor. Intentá nuevamente.')
       setEstado('error')
-      return
     }
-
-    setEstado('confirmado')
   }
 
   if (estado === 'confirmado') {
@@ -33,6 +48,7 @@ export default function ConfirmarReserva({ idTurno, idMedico }: Props) {
         <p className="border border-green-200 bg-green-50 p-4 text-sm text-green-800">
           Turno confirmado correctamente. Se registró la reserva a nombre del paciente.
         </p>
+
         <Link
           href={`/dashboard/paciente/reservar-turno/horarios/${idMedico}`}
           className="block bg-black px-4 py-3 text-center text-xs font-semibold text-white"
@@ -43,11 +59,25 @@ export default function ConfirmarReserva({ idTurno, idMedico }: Props) {
     )
   }
 
+  if (estado === 'error') {
+    return (
+      <section className="space-y-3">
+        <p className="border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          {mensaje}
+        </p>
+
+        <Link
+          href={`/dashboard/paciente/reservar-turno/horarios/${idMedico}`}
+          className="block bg-black px-4 py-3 text-center text-xs font-semibold text-white hover:bg-slate-800"
+        >
+          Volver a horarios disponibles
+        </Link>
+      </section>
+    )
+  }
+
   return (
     <section className="space-y-3">
-      {estado === 'error' && (
-        <p className="border border-red-200 bg-red-50 p-3 text-sm text-red-800">{mensaje}</p>
-      )}
       <button
         type="button"
         onClick={confirmar}
@@ -56,6 +86,7 @@ export default function ConfirmarReserva({ idTurno, idMedico }: Props) {
       >
         {estado === 'cargando' ? 'Confirmando...' : 'Confirmar Turno'}
       </button>
+
       <Link
         href={`/dashboard/paciente/reservar-turno/horarios/${idMedico}`}
         className="block text-center text-xs text-slate-600 no-underline hover:text-slate-900"
