@@ -22,10 +22,21 @@ export default function CalendarView({
   const year = parseInt(yearStr, 10)
   const month = parseInt(monthStr, 10) - 1
 
+  // Resetear selección de día y offset semanal cuando cambia el mes
+  React.useEffect(() => {
+    setDiaSeleccionado(null)
+    setSemanaOffset(0)
+  }, [currentMonth])
+
+  // Filtrar turnos estrictamente pertenecientes al mes seleccionado
+  const turnosMesActual = useMemo(() => {
+    return turnos.filter((t) => t.fecha_hora.startsWith(currentMonth))
+  }, [turnos, currentMonth])
+
   // Agrupar turnos por fecha YYYY-MM-DD
   const turnosPorFecha = useMemo(() => {
     const mapa: Record<string, Turno[]> = {}
-    for (const t of turnos) {
+    for (const t of turnosMesActual) {
       const fecha = t.fecha_hora.split('T')[0]
       if (!mapa[fecha]) {
         mapa[fecha] = []
@@ -33,7 +44,7 @@ export default function CalendarView({
       mapa[fecha].push(t)
     }
     return mapa
-  }, [turnos])
+  }, [turnosMesActual])
 
   // Días de la cuadrícula mensual
   const diasMes = useMemo(() => {
@@ -115,7 +126,7 @@ export default function CalendarView({
           </div>
 
           <span className="text-xs text-slate-500 font-mono hidden md:inline">
-            Turnos en agenda: <strong className="text-slate-900">{turnos.length}</strong>
+            Turnos en agenda: <strong className="text-slate-900">{turnosMesActual.length}</strong>
           </span>
         </div>
 
@@ -160,7 +171,7 @@ export default function CalendarView({
             <span>Cargando agenda médica...</span>
           </div>
         </div>
-      ) : turnos.length === 0 ? (
+      ) : turnosMesActual.length === 0 ? (
         <div className="text-center p-12 bg-white border border-dashed border-slate-300 rounded-xl">
           <svg className="w-10 h-10 mx-auto text-slate-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
