@@ -5,11 +5,13 @@ import MonthSelector from '@/components/agenda/MonthSelector'
 import DaySelector from '@/components/agenda/DaySelector'
 import ShiftConfigCard from '@/components/agenda/ShiftConfigCard'
 import CalendarView from '@/components/agenda/CalendarView'
+import PublishModal from '@/components/agenda/PublishModal'
 import {
   DiaSemana,
   DuracionTurno,
   DisponibilidadMedica,
   Turno,
+  ResumenPublicacion,
 } from '@/lib/types/agenda'
 import {
   calcularTurnosPosibles,
@@ -44,6 +46,12 @@ export default function AgendaMedicaPage() {
     especialidad: 'Traumatología',
     matricula: 'MN-84920',
   })
+
+  // Modal de Publicación (US-04)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [resumenPublicacion, setResumenPublicacion] = useState<ResumenPublicacion | null>(null)
+  const [isPublishing, setIsPublishing] = useState(false)
+  const [publishError, setPublishError] = useState<string | null>(null)
 
   // Turnos disponibles de la agenda
   const [turnosPublicados, setTurnosPublicados] = useState<Turno[]>([])
@@ -242,12 +250,72 @@ export default function AgendaMedicaPage() {
       }
 
       setSaveStatus('guardado')
-      setSuccessMessage('Disponibilidad guardada y turnos del mes generados correctamente.')
+      setSuccessMessage('Disponibilidad guardada correctamente en borrador.')
       await cargarDisponibilidades(currentMonth)
       await cargarTurnosAgenda(currentMonth)
     } catch (err: any) {
       setSaveStatus('error')
       setErrorMessage(err.message || 'Error al guardar disponibilidad')
+      throw err
+    }
+  }
+
+  // Abrir modal de confirmación y publicación (US-04)
+  const handleRevisarYPublicar = async () => {
+    setErrorMessage(null)
+    setPublishError(null)
+
+    try {
+      if (shifts.length === 0) {
+        throw new Error('Debes seleccionar al menos un día de atención.')
+      }
+
+      await handleGuardarBorrador()
+
+      const res = await fetch(`/api/medicos/disponibilidad/resumen?mes=${currentMonth}`)
+      if (!res.ok) {
+        const errData = await res.json()
+        throw new Error(errData.error || errData.message || 'Error al obtener resumen de publicación')
+      }
+
+      const data = await res.json()
+      setResumenPublicacion(data)
+      setIsModalOpen(true)
+    } catch (err: any) {
+      setErrorMessage(err.message || 'No se pudo generar el resumen de publicación')
+    }
+  }
+
+  // Confirmar y publicar agenda mensual (US-04)
+  const handleConfirmarPublicacion = async () => {
+    setIsPublishing(true)
+    setPublishError(null)
+
+    try {
+      const res = await fetch('/api/medicos/agenda/publicar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mes_vigencia: currentMonth }),
+      })
+
+      if (!res.ok) {
+        const errData = await res.json()
+        throw new Error(errData.error || errData.message || 'Error al publicar agenda médica')
+      }
+
+      const data = await res.json()
+      setIsModalOpen(false)
+      setSuccessMessage(
+        `¡Agenda publicada con éxito! Se abrieron ${data.total_turnos} turnos en ${data.total_jornadas} jornadas para reserva online de pacientes.`
+      )
+
+      await cargarDisponibilidades(currentMonth)
+      await cargarTurnosAgenda(currentMonth)
+      setTab('agenda')
+    } catch (err: any) {
+      setPublishError(err.message || 'Error durante la publicación de agenda')
+    } finally {
+      setIsPublishing(false)
     }
   }
 
@@ -452,7 +520,7 @@ export default function AgendaMedicaPage() {
                 )}
               </div>
 
-              {/* Botones de acción (Wireframe US-03) */}
+              {/* Botones de acción (Wireframe US-03 y US-04) */}
               <div className="flex flex-col sm:flex-row items-center gap-2.5 sm:gap-3">
                 <button
                   type="button"
@@ -460,14 +528,24 @@ export default function AgendaMedicaPage() {
                   disabled={saveStatus === 'guardando'}
                   className="w-full sm:w-auto px-4 py-2.5 text-xs font-mono font-bold text-slate-800 hover:text-black bg-slate-100 hover:bg-slate-200 rounded-lg border border-slate-300 transition-colors disabled:opacity-50"
                 >
-                  GUARDAR DISPONIBILIDAD
+                  GUARDAR BORRADOR
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleRevisarYPublicar}
+                  disabled={shifts.length === 0 || saveStatus === 'guardando'}
+                  className="w-full sm:w-auto px-5 py-2.5 text-xs font-mono font-bold text-white bg-black hover:bg-slate-800 rounded-lg transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  <span>CONFIRMAR Y PUBLICAR AGENDA</span>
+                  <span>&rarr;</span>
                 </button>
               </div>
             </div>
           </div>
         )}
 
-        {/* PESTAÑA 2: AGENDA PUBLICADA */}
+        {/* PESTAÑA 2: AGENDA PUBLICADA (US-05) */}
         {tab === 'agenda' && (
           <CalendarView
             currentMonth={currentMonth}
@@ -475,6 +553,18 @@ export default function AgendaMedicaPage() {
             isLoading={isLoadingTurnos}
           />
         )}
+
+        {/* Modal de Confirmación de Apertura de Agenda (US-04) */}
+        <PublishModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onConfirm={handleConfirmarPublicacion}
+          resumen={resumenPublicacion}
+          medicoNombre={medico.nombre}
+          medicoEspecialidad={medico.especialidad}
+          isPublishing={isPublishing}
+          error={publishError}
+        />
 
       </div>
     </div>
