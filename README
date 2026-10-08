@@ -1,32 +1,31 @@
 # SkyLink
 
-Aplicación con Next.js, React y TypeScript, lista para conectarse a Vercel.
+Aplicación con Next.js, React, TypeScript, Prisma ORM 7 y Neon Postgres.
 
-## Requisitos
+## Base de datos local/remota
 
-- Node.js 20.9 o superior
-- npm
+1. Creá un proyecto Postgres en Neon.
+2. Copiá la URL pooled (host con `-pooler`) a `DATABASE_URL` y la URL directa (sin `-pooler`) a `DIRECT_URL` en un archivo `.env` en la raíz. Tomá `.env.example` como referencia; no subas `.env` a Git.
+3. Aplicá la primera migración y cargá los médicos ficticios que usa la autenticación de desarrollo:
 
-## Desarrollo local
+```powershell
+npm.cmd run db:migrate -- --name init
+npm.cmd run db:seed
+```
 
-```bash
-npm install
-npm run dev
+La migración queda registrada en `prisma/migrations`. Para inspeccionar los datos, ejecutá `npm.cmd run db:studio`.
+
+## Desarrollo
+
+```powershell
+npm.cmd install
+npm.cmd run dev
 ```
 
 Abrí http://localhost:3000. La página principal está en `app/page.tsx`.
 
-## Build local
-
-```bash
-npm run build
-npm run start
-```
-
 ## Deploy en Vercel
 
-Importá el repositorio en Vercel y dejá que detecte Next.js. Los valores predeterminados son `npm run build` para build y configuración automática de output; no hace falta un `vercel.json` en un proyecto estándar de Next.js.
+Vercel detecta Next.js automáticamente. En Project Settings → Environment Variables cargá `DATABASE_URL` (pooled) y `DIRECT_URL` (directa) para Production y Preview. El build ejecuta `prisma generate && next build`.
 
-Configurá los secretos y variables de entorno en Project Settings → Environment Variables de Vercel. Para variables accesibles desde el navegador se usa el prefijo `NEXT_PUBLIC_`; nunca pongas secretos en variables con ese prefijo. Para desarrollo local, usá `.env.local`, que Git ignora.
-
-Comision 7
+Para producción, aplicá las migraciones versionadas con `npm.cmd run db:migrate:deploy`; no uses `migrate dev` contra producción. No expongas credenciales con el prefijo `NEXT_PUBLIC_`.

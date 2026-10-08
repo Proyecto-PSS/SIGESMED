@@ -7,3 +7,6 @@ out/
 !.env.example
 *.tsbuildinfo
 next-env.d.ts.tmp
+.data/
+lib/generated/prisma/
+.neon
