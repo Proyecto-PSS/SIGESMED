@@ -88,9 +88,18 @@ export async function POST(request: NextRequest) {
     const isValidation =
       message.includes('Regla de negocio') ||
       message.includes('inválido') ||
-      message.includes('inválida')
+      message.includes('inválida') ||
+      message.includes('meses anteriores')
 
     const status = error.statusCode || (isConflict ? 409 : isValidation ? 400 : 500)
-    return NextResponse.json({ error: message }, { status })
+    return NextResponse.json(
+      {
+        success: false,
+        error: message,
+        message,
+        ...(error.code ? { code: error.code } : {}),
+      },
+      { status }
+    )
   }
 }

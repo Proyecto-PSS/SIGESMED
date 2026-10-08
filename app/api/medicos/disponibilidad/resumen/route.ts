@@ -30,7 +30,16 @@ export async function GET(request: NextRequest) {
       ...resumen,
     })
   } catch (error: any) {
+    const message = error.message || 'Error al obtener resumen de publicación'
     const status = error.statusCode || 400
-    return NextResponse.json({ error: error.message }, { status })
+    return NextResponse.json(
+      {
+        success: false,
+        error: message,
+        message,
+        ...(error.code ? { code: error.code } : {}),
+      },
+      { status }
+    )
   }
 }

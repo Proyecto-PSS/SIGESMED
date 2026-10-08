@@ -112,3 +112,20 @@ export function obtenerFechasDelMesParaDia(
 export function validarFormatoMes(mes: string): boolean {
   return /^\d{4}-(0[1-9]|1[0-2])$/.test(mes)
 }
+
+/**
+ * Obtiene el mes calendario actual en formato YYYY-MM
+ */
+export function getMesActual(): string {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = (now.getMonth() + 1).toString().padStart(2, '0')
+  return `${year}-${month}`
+}
+
+/**
+ * Determina si un mes (YYYY-MM) es anterior al mes calendario actual
+ */
+export function esMesPasado(mes: string): boolean {
+  return mes < getMesActual()
+}

@@ -24,10 +24,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(resultado, { status: 200 })
   } catch (error: any) {
     const message = error.message || 'Error al publicar agenda'
+    const isValidation =
+      message.includes('meses anteriores') ||
+      message.includes('No hay configuraciones') ||
+      message.includes('inválido')
     const status =
       error.statusCode ||
-      (message.includes('No hay configuraciones') ? 400 : message.includes('supera') ? 409 : 500)
+      (isValidation ? 400 : message.includes('supera') ? 409 : 500)
 
-    return NextResponse.json({ error: message }, { status })
+    return NextResponse.json(
+      {
+        success: false,
+        error: message,
+        message,
+        ...(error.code ? { code: error.code } : {}),
+      },
+      { status }
+    )
   }
 }

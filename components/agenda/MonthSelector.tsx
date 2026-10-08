@@ -6,6 +6,7 @@ interface MonthSelectorProps {
   currentMonth: string // YYYY-MM
   onChangeMonth: (newMonth: string) => void
   disabled?: boolean
+  minMonth?: string // YYYY-MM
 }
 
 const MESES = [
@@ -27,19 +28,25 @@ export default function MonthSelector({
   currentMonth,
   onChangeMonth,
   disabled = false,
+  minMonth,
 }: MonthSelectorProps) {
   const [yearStr, monthStr] = currentMonth.split('-')
   const year = parseInt(yearStr, 10)
   const month = parseInt(monthStr, 10)
 
+  const isPrevDisabled = disabled || (Boolean(minMonth) && currentMonth <= (minMonth as string))
+
   const handlePrev = () => {
+    if (isPrevDisabled) return
     let nextMonth = month - 1
     let nextYear = year
     if (nextMonth < 1) {
       nextMonth = 12
       nextYear -= 1
     }
-    onChangeMonth(`${nextYear}-${nextMonth.toString().padStart(2, '0')}`)
+    const newMonthStr = `${nextYear}-${nextMonth.toString().padStart(2, '0')}`
+    if (minMonth && newMonthStr < minMonth) return
+    onChangeMonth(newMonthStr)
   }
 
   const handleNext = () => {
@@ -60,9 +67,9 @@ export default function MonthSelector({
         <button
           type="button"
           onClick={handlePrev}
-          disabled={disabled}
-          title="Mes anterior"
-          className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-700 hover:text-black hover:bg-slate-100 disabled:opacity-30 transition-colors border border-slate-200"
+          disabled={isPrevDisabled}
+          title={isPrevDisabled ? 'No se puede navegar a meses anteriores al actual' : 'Mes anterior'}
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-700 hover:text-black hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors border border-slate-200"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />

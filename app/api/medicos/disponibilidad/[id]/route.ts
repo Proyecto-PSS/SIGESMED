@@ -37,8 +37,17 @@ export async function PUT(
       disponibilidad,
     })
   } catch (error: any) {
+    const message = error.message || 'Error al modificar disponibilidad'
     const status = error.statusCode || 400
-    return NextResponse.json({ error: error.message }, { status })
+    return NextResponse.json(
+      {
+        success: false,
+        error: message,
+        message,
+        ...(error.code ? { code: error.code } : {}),
+      },
+      { status }
+    )
   }
 }
 
@@ -63,6 +72,14 @@ export async function DELETE(
   } catch (error: any) {
     const message = error.message || 'Error al eliminar configuración'
     const status = error.statusCode || (message.includes('No se puede eliminar') ? 409 : 400)
-    return NextResponse.json({ error: message }, { status })
+    return NextResponse.json(
+      {
+        success: false,
+        error: message,
+        message,
+        ...(error.code ? { code: error.code } : {}),
+      },
+      { status }
+    )
   }
 }
