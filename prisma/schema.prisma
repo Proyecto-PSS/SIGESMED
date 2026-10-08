@@ -100,6 +100,7 @@ model Turno {
   confirmacionEnviadaAt  DateTime?    @map("confirmacion_enviada_at") @db.Timestamptz(3)
   recordatorioEnviadoAt  DateTime?    @map("recordatorio_enviado_at") @db.Timestamptz(3)
   createdAt              DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  idempotencyKey         String?      @unique @map("idempotency_key")
 
   medico        Medico               @relation(fields: [idMedico], references: [idMedico], onDelete: Restrict)
   paciente      Paciente?            @relation(fields: [idPaciente], references: [idPaciente], onDelete: SetNull)
