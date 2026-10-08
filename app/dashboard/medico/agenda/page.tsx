@@ -15,6 +15,8 @@ import {
   calcularTurnosPosibles,
   obtenerFechasDelMesParaDia,
   NOMBRES_DIAS,
+  getMesActual,
+  esMesPasado,
 } from '@/lib/utils/agenda-utils'
 
 interface ShiftDraft {
@@ -27,7 +29,7 @@ interface ShiftDraft {
 
 export default function AgendaMedicaPage() {
   const [tab, setTab] = useState<'disponibilidad' | 'agenda'>('disponibilidad')
-  const [currentMonth, setCurrentMonth] = useState<string>('2024-11')
+  const [currentMonth, setCurrentMonth] = useState<string>(() => getMesActual())
   const [shifts, setShifts] = useState<ShiftDraft[]>([
     {
       diaSemana: 2, // Martes
@@ -236,6 +238,10 @@ export default function AgendaMedicaPage() {
     setSaveStatus('guardando')
 
     try {
+      if (esMesPasado(currentMonth)) {
+        throw new Error('No se puede configurar disponibilidad para meses anteriores al actual.')
+      }
+
       if (shifts.length === 0) {
         throw new Error('Debes seleccionar al menos un día de atención.')
       }
@@ -356,7 +362,11 @@ export default function AgendaMedicaPage() {
           {/* Selector de Mes */}
           <MonthSelector
             currentMonth={currentMonth}
-            onChangeMonth={(m) => setCurrentMonth(m)}
+            onChangeMonth={(m) => {
+              if (esMesPasado(m)) return
+              setCurrentMonth(m)
+            }}
+            minMonth={getMesActual()}
           />
         </div>
 

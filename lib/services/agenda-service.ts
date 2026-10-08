@@ -12,6 +12,8 @@ import {
   calcularTurnosPosibles,
   obtenerFechasDelMesParaDia,
   validarFormatoMes,
+  getMesActual,
+  esMesPasado,
 } from '../utils/agenda-utils'
 
 export {
@@ -20,6 +22,15 @@ export {
   calcularTurnosPosibles,
   obtenerFechasDelMesParaDia,
   validarFormatoMes,
+  getMesActual,
+  esMesPasado,
+}
+
+function pastMonthError() {
+  const err = new Error('No se puede configurar disponibilidad para meses anteriores al actual.') as any
+  err.statusCode = 400
+  err.code = 'PAST_MONTH_NOT_ALLOWED'
+  return err
 }
 
 function mesAFecha(mes: string): Date {
@@ -135,6 +146,7 @@ export class AgendaService {
     const { mes_vigencia, dia_semana, hora_desde, hora_hasta, duracion_turno_minutos } = data
 
     if (!validarFormatoMes(mes_vigencia)) throw new Error('Formato de mes inválido. Debe ser YYYY-MM')
+    if (esMesPasado(mes_vigencia)) throw pastMonthError()
     if (![1, 2, 3, 4, 5, 6].includes(dia_semana)) {
       throw new Error('Día de la semana inválido. Debe ser de Lunes (1) a Sábado (6)')
     }
@@ -219,6 +231,11 @@ export class AgendaService {
       })
       if (!row) throw new Error('Configuración de disponibilidad no encontrada')
 
+      const mesVigenciaStr = row.mesVigencia.toISOString().slice(0, 7)
+      if (esMesPasado(mesVigenciaStr)) {
+        throw pastMonthError()
+      }
+
       const turnoReservado = await tx.turno.findFirst({
         where: { idDisponibilidadMedica: id, estado: { not: 'DISPONIBLE' } },
         select: { idTurno: true },
@@ -238,6 +255,7 @@ export class AgendaService {
     mes_vigencia: string
   ): Promise<ResumenPublicacion> {
     if (!validarFormatoMes(mes_vigencia)) throw new Error('Formato de mes inválido. Debe ser YYYY-MM')
+    if (esMesPasado(mes_vigencia)) throw pastMonthError()
 
     const disponibilidades = await prisma.disponibilidadMedica.findMany({
       where: { idMedico: id_medico, mesVigencia: mesAFecha(mes_vigencia) },
@@ -275,6 +293,8 @@ export class AgendaService {
     id_medico: string,
     mes_vigencia: string
   ): Promise<{ success: boolean; mes: string; total_jornadas: number; total_turnos: number }> {
+    if (!validarFormatoMes(mes_vigencia)) throw new Error('Formato de mes inválido. Debe ser YYYY-MM')
+    if (esMesPasado(mes_vigencia)) throw pastMonthError()
     const resumen = await this.obtenerResumenPublicacion(id_medico, mes_vigencia)
     const mes = mesAFecha(mes_vigencia)
 
