@@ -30,20 +30,7 @@ interface ShiftDraft {
 export default function AgendaMedicaPage() {
   const [tab, setTab] = useState<'disponibilidad' | 'agenda'>('disponibilidad')
   const [currentMonth, setCurrentMonth] = useState<string>(() => getMesActual())
-  const [shifts, setShifts] = useState<ShiftDraft[]>([
-    {
-      diaSemana: 2, // Martes
-      horaDesde: '08:00',
-      horaHasta: '13:00',
-      duracion: 30,
-    },
-    {
-      diaSemana: 4, // Jueves
-      horaDesde: '14:00',
-      horaHasta: '19:00',
-      duracion: 30,
-    },
-  ])
+  const [shifts, setShifts] = useState<ShiftDraft[]>([])
 
   const [saveStatus, setSaveStatus] = useState<
     'guardado' | 'guardando' | 'cambios_locales' | 'error'
@@ -66,6 +53,7 @@ export default function AgendaMedicaPage() {
   const cargarDisponibilidades = useCallback(async (mes: string) => {
     try {
       setSaveStatus('guardando')
+      setShifts([])
       const res = await fetch(`/api/medicos/disponibilidad?mes=${mes}`)
       if (!res.ok) throw new Error('Error al consultar disponibilidades')
       const data = await res.json()
@@ -89,33 +77,12 @@ export default function AgendaMedicaPage() {
         setShifts(loaded)
         setSaveStatus('guardado')
       } else {
-        try {
-          const localDraft = localStorage.getItem(`sigesmed_draft_${mes}`)
-          if (localDraft) {
-            setShifts(JSON.parse(localDraft))
-            setSaveStatus('cambios_locales')
-            return
-          }
-        } catch {}
-
-        setShifts([
-          {
-            diaSemana: 2,
-            horaDesde: '08:00',
-            horaHasta: '13:00',
-            duracion: 30,
-          },
-          {
-            diaSemana: 4,
-            horaDesde: '14:00',
-            horaHasta: '19:00',
-            duracion: 30,
-          },
-        ])
-        setSaveStatus('cambios_locales')
+        setShifts([])
+        setSaveStatus('guardado')
       }
     } catch (err: any) {
       console.error(err)
+      setShifts([])
       setSaveStatus('error')
     }
   }, [])
@@ -124,12 +91,14 @@ export default function AgendaMedicaPage() {
   const cargarTurnosAgenda = useCallback(async (mes: string) => {
     try {
       setIsLoadingTurnos(true)
+      setTurnosPublicados([])
       const res = await fetch(`/api/medicos/agenda?mes=${mes}&vista=mensual`)
       if (!res.ok) throw new Error('Error al cargar agenda médica')
       const data = await res.json()
       setTurnosPublicados(data.turnos || [])
     } catch (err) {
       console.error(err)
+      setTurnosPublicados([])
     } finally {
       setIsLoadingTurnos(false)
     }
@@ -140,10 +109,14 @@ export default function AgendaMedicaPage() {
     cargarTurnosAgenda(currentMonth)
   }, [currentMonth, cargarDisponibilidades, cargarTurnosAgenda])
 
-  // Guardar en LocalStorage preventivamente
+  // Guardar en LocalStorage preventivamente si hay turnos configurados
   useEffect(() => {
     try {
-      localStorage.setItem(`sigesmed_draft_${currentMonth}`, JSON.stringify(shifts))
+      if (shifts.length > 0) {
+        localStorage.setItem(`sigesmed_draft_${currentMonth}`, JSON.stringify(shifts))
+      } else {
+        localStorage.removeItem(`sigesmed_draft_${currentMonth}`)
+      }
     } catch {}
   }, [shifts, currentMonth])
 
