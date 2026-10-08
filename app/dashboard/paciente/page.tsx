@@ -33,11 +33,18 @@ export default function PacienteDashboardPage() {
             <h2 className="text-lg font-bold">Médicos</h2>
             <p className="mt-2 text-sm text-slate-600">Elegí un profesional y consultá sus días y horarios disponibles.</p>
           </Link>
-          <article className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-            <span className="mb-2 block text-xs font-mono font-bold uppercase text-slate-500">Mis citas</span>
+          <Link
+            href="/dashboard/paciente/mis-citas"
+            className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-slate-400"
+          >
+            <span className="mb-2 block text-xs font-mono font-bold uppercase text-slate-500">
+              Mis citas
+            </span>
             <h2 className="text-lg font-bold">Turnos confirmados</h2>
-            <p className="mt-2 text-sm text-slate-600">Visualización de citas programadas y opción de cancelación con al menos 48 hs de anticipación.</p>
-          </article>
+            <p className="mt-2 text-sm text-slate-600">
+              Visualización de citas programadas y opción de cancelación con al menos 48 hs de anticipación.
+            </p>
+          </Link>
           <article className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
             <span className="mb-2 block text-xs font-mono font-bold uppercase text-slate-500">Ficha médica</span>
             <h2 className="text-lg font-bold">Mi historial clínico</h2>
