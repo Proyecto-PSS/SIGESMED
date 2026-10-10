@@ -32,9 +32,10 @@ export async function GET(request: NextRequest) {
       disponibilidades,
     })
   } catch (error: any) {
+    console.error("GET ERROR:", error);
     const status = error.statusCode || 500
     return NextResponse.json(
-      { error: error.message || 'Error interno al consultar disponibilidad' },
+      { error: error.message || 'Error interno al consultar disponibilidad', stack: error.stack },
       { status }
     )
   }
@@ -62,7 +63,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { disponibilidad, esNueva, turnosGenerados } = await AgendaService.guardarDisponibilidad(
+    const { disponibilidad, esNueva, turnosGenerados, turnosCancelados } = await AgendaService.guardarDisponibilidadConEmails(
       medico.id,
       {
         mes_vigencia,
@@ -73,19 +74,24 @@ export async function POST(request: NextRequest) {
       }
     )
 
+    let successMessage = 'Horarios actualizados.'
+    if (turnosCancelados && turnosCancelados > 0) {
+      successMessage = `Horarios actualizados. Se cancelaron ${turnosCancelados} turnos automáticamente`
+    }
+
     return NextResponse.json(
       {
-        message: esNueva
-          ? 'Disponibilidad creada y turnos generados exitosamente'
-          : 'Disponibilidad actualizada y turnos regenerados exitosamente',
+        message: successMessage,
         disponibilidad,
         turnos_generados: turnosGenerados,
+        turnos_cancelados: turnosCancelados
       },
       { status: esNueva ? 201 : 200 }
     )
   } catch (error: any) {
+    console.error("POST ERROR:", error);
     const message = error.message || 'Error al guardar disponibilidad'
-    const isConflict = message.includes('No se puede modificar')
+    const isConflict = message.includes('No se puede modificar') || message.includes('No se pueden modificar')
     const isValidation =
       message.includes('Regla de negocio') ||
       message.includes('inválido') ||
@@ -98,6 +104,7 @@ export async function POST(request: NextRequest) {
         success: false,
         error: message,
         message,
+        stack: error.stack,
         ...(error.code ? { code: error.code } : {}),
       },
       { status }

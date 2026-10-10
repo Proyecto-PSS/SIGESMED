@@ -152,14 +152,13 @@ export default function AgendaMedicaPage() {
   }, [shifts, currentMonth])
 
   // Toggle de día seleccionado
-  const handleToggleDay = (dia: DiaSemana) => {
+  const handleToggleDay = async (dia: DiaSemana) => {
     setErrorMessage(null)
     setSuccessMessage(null)
 
     const exists = shifts.some((s) => s.diaSemana === dia)
     if (exists) {
-      setShifts(shifts.filter((s) => s.diaSemana !== dia))
-      setSaveStatus('cambios_locales')
+      await handleRemoveShift(dia)
     } else {
       if (shifts.length >= 2) {
         setErrorMessage('Solo puedes seleccionar hasta 2 días semanales.')
@@ -198,9 +197,12 @@ export default function AgendaMedicaPage() {
     if (target?.id) {
       try {
         const res = await fetch(`/api/medicos/disponibilidad/${target.id}`, { method: 'DELETE' })
+        const data = await res.json()
         if (!res.ok) {
-          const data = await res.json()
           throw new Error(data.error || 'No se pudo eliminar la disponibilidad')
+        }
+        if (data.message) {
+          setSuccessMessage(data.message)
         }
       } catch (err) {
         console.error('Error eliminando en servidor:', err)
@@ -230,6 +232,8 @@ export default function AgendaMedicaPage() {
         throw new Error('No puedes configurar más de 2 días a la semana.')
       }
 
+      let finalMessage = 'Disponibilidad guardada correctamente en borrador.'
+
       for (const s of shifts) {
         const res = await fetch('/api/medicos/disponibilidad', {
           method: 'POST',
@@ -243,14 +247,19 @@ export default function AgendaMedicaPage() {
           }),
         })
 
+        const resData = await res.json()
+
         if (!res.ok) {
-          const errData = await res.json()
-          throw new Error(errData.error || 'Error al guardar disponibilidad')
+          throw new Error(resData.error || 'Error al guardar disponibilidad')
+        }
+
+        if (resData.turnos_cancelados && resData.turnos_cancelados > 0) {
+          finalMessage = resData.message
         }
       }
 
       setSaveStatus('guardado')
-      setSuccessMessage('Disponibilidad guardada correctamente en borrador.')
+      setSuccessMessage(finalMessage)
       await cargarDisponibilidades(currentMonth)
       await cargarTurnosAgenda(currentMonth)
     } catch (err: any) {
