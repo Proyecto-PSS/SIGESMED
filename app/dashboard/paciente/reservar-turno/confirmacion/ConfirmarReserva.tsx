@@ -4,6 +4,7 @@
 import Link from 'next/link'
 import { useState, useRef } from 'react'
 import { RESERVA_CONFIG } from '@/lib/config/reserva-config'
+import { esperar, fetchConTimeout } from '@/lib/utils/resilient-fetch'
 
 type Props = {
   idTurno: string
@@ -15,11 +16,10 @@ type EstadoReserva =
   | 'cargando'
   | 'reintentando'
   | 'verificando'
+  | 'verificacion_pendiente'
   | 'confirmado'
   | 'conflicto'
   | 'error'
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 export default function ConfirmarReserva({ idTurno, idMedico }: Props) {
   const [estado, setEstado] = useState<EstadoReserva>('inicial')
@@ -28,20 +28,84 @@ export default function ConfirmarReserva({ idTurno, idMedico }: Props) {
   const enProcesoRef = useRef(false)
   const idempotencyKeyRef = useRef<string | null>(null)
 
-  async function confirmar() {
-    // Prevención estricta de doble click y submits concurrentes
-    if (enProcesoRef.current) return
-    enProcesoRef.current = true
-
-    // Generar una única clave de idempotencia por operación lógica
+  function generarClaveIdempotencia(): string {
     if (!idempotencyKeyRef.current) {
       idempotencyKeyRef.current =
         typeof crypto !== 'undefined' && crypto.randomUUID
           ? crypto.randomUUID()
           : `req_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
     }
-    const idempotencyKey = idempotencyKeyRef.current
+    return idempotencyKeyRef.current
+  }
 
+  async function verificarEstado(clave?: string) {
+    const key = clave || idempotencyKeyRef.current
+    if (!key) return
+
+    setEstado('verificando')
+    setMensaje('Estamos verificando tu reserva...')
+    enProcesoRef.current = true
+
+    for (let v = 0; v < RESERVA_CONFIG.MAX_VERIFY_RETRIES; v++) {
+      try {
+        if (v > 0) {
+          await esperar(RESERVA_CONFIG.VERIFY_INTERVAL_MS)
+        }
+
+        const statusRes = await fetchConTimeout(
+          `/api/turnos/reservar/status?idempotencyKey=${encodeURIComponent(key)}&turnoId=${idTurno}`,
+          {
+            method: 'GET',
+            headers: {
+              'Idempotency-Key': key,
+            },
+          },
+          RESERVA_CONFIG.VERIFY_TIMEOUT_MS
+        )
+
+        if (statusRes.ok) {
+          const statusData = await statusRes.json()
+
+          if (statusData.status === 'CONFIRMADO') {
+            setEstado('confirmado')
+            enProcesoRef.current = false
+            return
+          }
+
+          if (statusData.status === 'RECHAZADO') {
+            setMensaje('Este turno ya no está disponible.')
+            setEstado('conflicto')
+            enProcesoRef.current = false
+            idempotencyKeyRef.current = null
+            return
+          }
+
+          if (statusData.status === 'NO_ENCONTRADO') {
+            // El servidor no procesó la reserva; falla segura
+            setMensaje('No pudimos confirmar el turno. Por favor, intentá nuevamente.')
+            setEstado('error')
+            enProcesoRef.current = false
+            idempotencyKeyRef.current = null
+            return
+          }
+        }
+      } catch {
+        // Fallo transitorio en la verificación, continúa el ciclo
+      }
+    }
+
+    // Si no se pudo determinar el estado tras agotar consultas de verificación
+    setMensaje('No pudimos determinar si el turno fue confirmado debido a un error de conexión.')
+    setEstado('verificacion_pendiente')
+    enProcesoRef.current = false
+  }
+
+  async function confirmar() {
+    // Prevención estricta de doble click y submits concurrentes
+    if (enProcesoRef.current) return
+    enProcesoRef.current = true
+
+    const idempotencyKey = generarClaveIdempotencia()
     setMensaje('')
     let intento = 0
     let confirmado = false
@@ -52,33 +116,28 @@ export default function ConfirmarReserva({ idTurno, idMedico }: Props) {
       try {
         if (intento > 0) {
           setEstado('reintentando')
-          setMensaje('Conexión inestable. Intentando confirmar tu turno...')
+          setMensaje('Error de conexión, reintentando...')
           const delay = RESERVA_CONFIG.RETRY_BASE_DELAY_MS * Math.pow(2, intento - 1)
-          await sleep(delay)
+          await esperar(delay)
         } else {
           setEstado('cargando')
         }
 
-        const controller = new AbortController()
-        const timeoutId = setTimeout(
-          () => controller.abort(),
+        const response = await fetchConTimeout(
+          `/api/pacientes/turnos/${idTurno}/confirmar`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Idempotency-Key': idempotencyKey,
+            },
+            body: JSON.stringify({
+              idempotencyKey,
+              modalidad: 'PARTICULAR',
+            }),
+          },
           RESERVA_CONFIG.REQUEST_TIMEOUT_MS
         )
-
-        const response = await fetch(`/api/pacientes/turnos/${idTurno}/confirmar`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Idempotency-Key': idempotencyKey,
-          },
-          body: JSON.stringify({
-            idempotencyKey,
-            modalidad: 'PARTICULAR',
-          }),
-          signal: controller.signal,
-        })
-
-        clearTimeout(timeoutId)
 
         if (response.ok) {
           confirmado = true
@@ -126,81 +185,28 @@ export default function ConfirmarReserva({ idTurno, idMedico }: Props) {
 
     // Recuperación de estado incierto tras agotar reintentos o pérdida de respuesta
     if (necesitaVerificacion) {
-      setEstado('verificando')
-      setMensaje('Estamos verificando tu reserva...')
-
-      for (let v = 0; v < RESERVA_CONFIG.MAX_VERIFY_RETRIES; v++) {
-        try {
-          await sleep(RESERVA_CONFIG.VERIFY_INTERVAL_MS)
-
-          const controller = new AbortController()
-          const timeoutId = setTimeout(
-            () => controller.abort(),
-            RESERVA_CONFIG.VERIFY_TIMEOUT_MS
-          )
-
-          const statusRes = await fetch(
-            `/api/pacientes/turnos/${idTurno}/confirmar?idempotencyKey=${encodeURIComponent(idempotencyKey)}`,
-            {
-              method: 'GET',
-              headers: {
-                'Idempotency-Key': idempotencyKey,
-              },
-              signal: controller.signal,
-            }
-          )
-          clearTimeout(timeoutId)
-
-          if (statusRes.ok) {
-            const statusData = await statusRes.json()
-
-            if (statusData.status === 'CONFIRMADO') {
-              setEstado('confirmado')
-              enProcesoRef.current = false
-              return
-            }
-
-            if (statusData.status === 'RECHAZADO') {
-              setMensaje('Este turno ya no está disponible.')
-              setEstado('conflicto')
-              enProcesoRef.current = false
-              idempotencyKeyRef.current = null
-              return
-            }
-
-            if (statusData.status === 'NO_ENCONTRADO') {
-              // El servidor no procesó la reserva; falla definitiva segura
-              setMensaje('No pudimos confirmar el turno. Por favor, intentá nuevamente.')
-              setEstado('error')
-              enProcesoRef.current = false
-              idempotencyKeyRef.current = null
-              return
-            }
-          }
-        } catch {
-          // Fallo transitorio en la verificación, reintentar verificación
-        }
-      }
-
-      // Si no se pudo contactar al servidor tras todos los intentos de verificación
-      setMensaje('No pudimos confirmar el turno. Por favor, intentá nuevamente.')
-      setEstado('error')
-      enProcesoRef.current = false
-      idempotencyKeyRef.current = null
+      await verificarEstado(idempotencyKey)
     }
   }
 
   if (estado === 'confirmado') {
     return (
-      <section className="space-y-3">
+      <section className="space-y-3" role="status" aria-live="polite">
         <div className="border border-green-200 bg-green-50 p-4 text-sm text-green-800">
           <p className="mb-1 text-base font-bold">¡Turno confirmado!</p>
           <p>Turno confirmado correctamente. Se registró la reserva a nombre del paciente.</p>
         </div>
 
         <Link
+          href="/dashboard/paciente/mis-citas"
+          className="block bg-black px-4 py-3 text-center text-xs font-semibold uppercase text-white hover:bg-slate-800"
+        >
+          Ver mis turnos (Mis Citas)
+        </Link>
+
+        <Link
           href={`/dashboard/paciente/reservar-turno/horarios/${idMedico}`}
-          className="block bg-black px-4 py-3 text-center text-xs font-semibold text-white hover:bg-slate-800"
+          className="block border border-slate-300 bg-white px-4 py-3 text-center text-xs font-semibold text-slate-800 hover:bg-slate-50"
         >
           Volver a horarios
         </Link>
@@ -210,10 +216,11 @@ export default function ConfirmarReserva({ idTurno, idMedico }: Props) {
 
   if (estado === 'conflicto') {
     return (
-      <section className="space-y-3">
-        <p className="border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-          {mensaje || 'Este turno ya no está disponible.'}
-        </p>
+      <section className="space-y-3" role="alert">
+        <div className="border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          <p className="mb-1 font-bold">Turno no disponible</p>
+          <p>{mensaje || 'Este turno ya no está disponible.'}</p>
+        </div>
 
         <Link
           href={`/dashboard/paciente/reservar-turno/horarios/${idMedico}`}
@@ -225,9 +232,46 @@ export default function ConfirmarReserva({ idTurno, idMedico }: Props) {
     )
   }
 
+  if (estado === 'verificacion_pendiente') {
+    return (
+      <section className="space-y-3" role="alert">
+        <div className="border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+          <p className="mb-1 font-bold">Verificación pendiente</p>
+          <p>
+            No pudimos determinar si tu reserva fue completada debido a una falla de conexión.
+            El turno puede haber sido procesado por el servidor. Por favor, reverificá el estado
+            antes de realizar una nueva reserva.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => verificarEstado()}
+          className="flex w-full items-center justify-center gap-2 bg-black px-4 py-3 text-center text-xs font-semibold uppercase text-white hover:bg-slate-800"
+        >
+          Reverificar estado de la reserva
+        </button>
+
+        <Link
+          href="/dashboard/paciente/mis-citas"
+          className="block border border-slate-300 bg-white px-4 py-3 text-center text-xs font-semibold text-slate-800 hover:bg-slate-50"
+        >
+          Consultar Mis Citas
+        </Link>
+
+        <Link
+          href={`/dashboard/paciente/reservar-turno/horarios/${idMedico}`}
+          className="block text-center text-xs text-slate-600 no-underline hover:text-slate-900"
+        >
+          Volver a horarios
+        </Link>
+      </section>
+    )
+  }
+
   if (estado === 'error') {
     return (
-      <section className="space-y-3">
+      <section className="space-y-3" role="alert">
         <p className="border border-red-200 bg-red-50 p-4 text-sm text-red-800">
           {mensaje || 'No pudimos confirmar el turno. Por favor, intentá nuevamente.'}
         </p>
@@ -256,14 +300,22 @@ export default function ConfirmarReserva({ idTurno, idMedico }: Props) {
   return (
     <section className="space-y-3">
       {estado === 'reintentando' && (
-        <div className="flex items-center gap-2 border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+        <div
+          className="flex items-center gap-2 border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800"
+          role="status"
+          aria-live="polite"
+        >
           <Spinner />
-          <span>Conexión inestable. Intentando confirmar tu turno...</span>
+          <span>Error de conexión, reintentando...</span>
         </div>
       )}
 
       {estado === 'verificando' && (
-        <div className="flex items-center gap-2 border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
+        <div
+          className="flex items-center gap-2 border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800"
+          role="status"
+          aria-live="polite"
+        >
           <Spinner />
           <span>Estamos verificando tu reserva...</span>
         </div>
@@ -273,7 +325,7 @@ export default function ConfirmarReserva({ idTurno, idMedico }: Props) {
         type="button"
         onClick={confirmar}
         disabled={estaProcesando}
-        className="flex w-full items-center justify-center gap-2 bg-black px-4 py-3 text-xs font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+        className="flex w-full items-center justify-center gap-2 bg-black px-4 py-3 text-xs font-semibold uppercase text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
       >
         {estaProcesando && <Spinner />}
         <span>

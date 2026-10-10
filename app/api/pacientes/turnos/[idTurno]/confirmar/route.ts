@@ -9,6 +9,13 @@ export async function POST(
 ) {
   try {
     const { idTurno } = await params
+    if (!idTurno || typeof idTurno !== 'string') {
+      return NextResponse.json(
+        { success: false, error: 'Identificador de turno inválido', code: 'INVALID_INPUT' },
+        { status: 400 }
+      )
+    }
+
     const paciente = await getCurrentPatient()
 
     let body: {
@@ -35,16 +42,19 @@ export async function POST(
       modalidad,
     })
 
-    return NextResponse.json({
-      success: true,
-      idempotent: resultado.idempotent,
-      turno: resultado.turno,
-      reservation: {
-        id: resultado.turno.idTurno,
-        turnoId: resultado.turno.idTurno,
-        estado: resultado.turno.estado,
+    return NextResponse.json(
+      {
+        success: true,
+        idempotent: resultado.idempotent,
+        turno: resultado.turno,
+        reservation: {
+          id: resultado.turno.idTurno,
+          turnoId: resultado.turno.idTurno,
+          estado: resultado.turno.estado,
+        },
       },
-    })
+      { status: resultado.idempotent ? 200 : 201 }
+    )
   } catch (error) {
     const customError = error as Error & { statusCode?: number; code?: string }
     const statusCode = customError.statusCode ?? 500

@@ -52,7 +52,20 @@ export async function confirmarTurno(
       }
     }
 
-    // 2. Concurrencia atómica (US-09): actualizar el turno solo si sigue DISPONIBLE
+    // 2. Verificar existencia del turno
+    const turnoExistente = await tx.turno.findUnique({
+      where: { idTurno },
+      include: { medico: true, paciente: true },
+    })
+
+    if (!turnoExistente) {
+      const err = new Error('El turno solicitado no existe')
+      ;(err as Error & { statusCode?: number; code?: string }).statusCode = 404
+      ;(err as Error & { statusCode?: number; code?: string }).code = 'TURN_NOT_FOUND'
+      throw err
+    }
+
+    // 3. Concurrencia atómica (US-09 y US-18): actualizar el turno solo si sigue DISPONIBLE
     const actualizado = await tx.turno.updateMany({
       where: {
         idTurno,
@@ -68,7 +81,7 @@ export async function confirmarTurno(
     })
 
     if (actualizado.count !== 1) {
-      // 3. Si no se actualizó, verificar si fue por una condición de carrera donde otra solicitud
+      // 4. Si no se actualizó, verificar si fue por una condición de carrera donde otra solicitud
       // concurrente con la misma idempotencyKey y mismo paciente se confirmó un instante antes
       if (idempotencyKey) {
         const yaConfirmado = await tx.turno.findFirst({
@@ -88,6 +101,14 @@ export async function confirmarTurno(
         }
       }
 
+      // Si el turno ya está confirmado por este mismo paciente pero con otra key o sin key
+      if (turnoExistente.estado === 'CONFIRMADO' && turnoExistente.idPaciente === idPaciente) {
+        return {
+          turno: turnoExistente,
+          idempotent: true,
+        }
+      }
+
       // Si no fue esta misma operación, el turno fue tomado por otro paciente o ya no está disponible
       const error = new Error('El turno ya no está disponible')
       ;(error as Error & { statusCode?: number; code?: string }).statusCode = 409
@@ -95,7 +116,7 @@ export async function confirmarTurno(
       throw error
     }
 
-    // 4. Reserva confirmada exitosamente
+    // 5. Reserva confirmada exitosamente
     const turno = await tx.turno.findUniqueOrThrow({
       where: { idTurno },
       include: { medico: true, paciente: true },
@@ -121,7 +142,14 @@ export async function consultarEstadoReserva(
     })
 
     if (turnoConKey) {
-      if (turnoConKey.idTurno === idTurno && turnoConKey.idPaciente === idPaciente) {
+      if (turnoConKey.idPaciente !== idPaciente) {
+        const err = new Error('No autorizado para consultar la operación de otro paciente')
+        ;(err as Error & { statusCode?: number; code?: string }).statusCode = 403
+        ;(err as Error & { statusCode?: number; code?: string }).code = 'FORBIDDEN'
+        throw err
+      }
+
+      if (turnoConKey.idTurno === idTurno) {
         return {
           status: 'CONFIRMADO',
           turnoId: idTurno,
@@ -131,7 +159,7 @@ export async function consultarEstadoReserva(
         return {
           status: 'RECHAZADO',
           turnoId: idTurno,
-          message: 'La operación no coincide con el turno o paciente indicado.',
+          message: 'La clave de idempotencia fue utilizada para otro turno.',
         }
       }
     }
@@ -152,12 +180,21 @@ export async function consultarEstadoReserva(
 
   if (turno.estado === 'CONFIRMADO') {
     if (turno.idPaciente === idPaciente) {
+      // Si se envió idempotencyKey y no coincidió con este turno, no es esta operación lógica
+      if (idempotencyKey && turno.idempotencyKey && turno.idempotencyKey !== idempotencyKey) {
+        return {
+          status: 'NO_ENCONTRADO',
+          turnoId: idTurno,
+        }
+      }
+
       return {
         status: 'CONFIRMADO',
         turnoId: idTurno,
         turno,
       }
     } else {
+      // Turno tomado por otro paciente: no exponer los datos del otro paciente
       return {
         status: 'RECHAZADO',
         turnoId: idTurno,
@@ -195,7 +232,14 @@ export async function consultarEstadoReservaPorKey(
     }
   }
 
-  if (turnoConKey.idPaciente === idPaciente && turnoConKey.estado === 'CONFIRMADO') {
+  if (turnoConKey.idPaciente !== idPaciente) {
+    const err = new Error('No autorizado para consultar la operación de otro paciente')
+    ;(err as Error & { statusCode?: number; code?: string }).statusCode = 403
+    ;(err as Error & { statusCode?: number; code?: string }).code = 'FORBIDDEN'
+    throw err
+  }
+
+  if (turnoConKey.estado === 'CONFIRMADO') {
     return {
       status: 'CONFIRMADO',
       turnoId: turnoConKey.idTurno,
@@ -204,8 +248,7 @@ export async function consultarEstadoReservaPorKey(
   }
 
   return {
-    status: 'RECHAZADO',
+    status: 'NO_ENCONTRADO',
     turnoId: turnoConKey.idTurno,
-    message: 'El turno no pertenece al paciente actual.',
   }
 }

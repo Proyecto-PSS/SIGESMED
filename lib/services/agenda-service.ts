@@ -165,7 +165,12 @@ export class AgendaService {
       hora_hasta: string
       duracion_turno_minutos: DuracionTurno
     }
-  ): Promise<{ disponibilidad: DisponibilidadMedica; esNueva: boolean; turnosGenerados: number }> {
+  ): Promise<{
+    disponibilidad: DisponibilidadMedica
+    esNueva: boolean
+    turnosGenerados: number
+    turnosCanceladosInfo?: { pacienteEmail: string; pacienteNombre: string; fechaHora: string; medicoNombre: string }[]
+  }> {
     const { mes_vigencia, dia_semana, hora_desde, hora_hasta, duracion_turno_minutos } = data
 
     if (!validarFormatoMes(mes_vigencia)) throw new Error('Formato de mes inválido. Debe ser YYYY-MM')

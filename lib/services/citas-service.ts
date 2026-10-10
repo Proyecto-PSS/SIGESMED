@@ -48,12 +48,28 @@ export async function cancelarCitaPaciente(
   })
 
   if (!turno) {
+    // Si no está confirmado con idPaciente, verificar si ya fue cancelado previamente por este paciente
+    const turnoExistente = await prisma.turno.findUnique({
+      where: { idTurno },
+    })
+
+    if (!turnoExistente) {
+      const error = new Error('No se encontró el turno')
+      ;(error as Error & { statusCode?: number }).statusCode = 404
+      throw error
+    }
+
+    if (
+      turnoExistente.estado === 'DISPONIBLE' &&
+      turnoExistente.motivoCancelacion === 'Cancelado por el paciente'
+    ) {
+      return turnoExistente
+    }
+
     const error = new Error(
       'No se encontró el turno o ya no está confirmado'
     )
-
     ;(error as Error & { statusCode?: number }).statusCode = 404
-
     throw error
   }
 
@@ -74,9 +90,7 @@ export async function cancelarCitaPaciente(
     const error = new Error(
       'No se puede cancelar el turno porque faltan 48 horas o menos'
     )
-
     ;(error as Error & { statusCode?: number }).statusCode = 409
-
     throw error
   }
 
@@ -91,16 +105,27 @@ export async function cancelarCitaPaciente(
       estado: 'DISPONIBLE',
       modalidad: null,
       motivoCancelacion: 'Cancelado por el paciente',
+      idempotencyKey: null,
     },
   })
 
   if (actualizado.count !== 1) {
+    const turnoRevisado = await prisma.turno.findUnique({
+      where: { idTurno },
+    })
+
+    if (
+      turnoRevisado &&
+      turnoRevisado.estado === 'DISPONIBLE' &&
+      turnoRevisado.motivoCancelacion === 'Cancelado por el paciente'
+    ) {
+      return turnoRevisado
+    }
+
     const error = new Error(
       'No se pudo cancelar el turno porque su estado cambió'
     )
-
     ;(error as Error & { statusCode?: number }).statusCode = 409
-
     throw error
   }
 
