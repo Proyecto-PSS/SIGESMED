@@ -7,7 +7,7 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --experimental-strip-types tests/admin-professional-validation.test.ts",
+    "test": "node --experimental-strip-types tests/admin-professional-validation.test.ts && node --experimental-strip-types tests/us18-resilience-concurrency.test.ts",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
