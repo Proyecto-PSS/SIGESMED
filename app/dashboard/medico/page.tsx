@@ -1,7 +1,9 @@
 import Link from 'next/link'
 import { UserButton } from '@clerk/nextjs'
+import { getCurrentMedicalUser } from '@/lib/auth'
 
-export default function MedicoDashboardPage() {
+export default async function MedicoDashboardPage() {
+  const medico = await getCurrentMedicalUser()
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 p-4 sm:p-6 lg:p-8">
       <div className="max-w-5xl mx-auto space-y-6">
@@ -17,8 +19,8 @@ export default function MedicoDashboardPage() {
 
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 bg-white border border-slate-200 px-3 py-1.5 rounded-lg">
-              <span className="text-xs font-bold text-slate-900">Dr. Martín Gómez</span>
-              <span className="text-[10px] font-mono text-slate-500">Traumatología</span>
+              <span className="text-xs font-bold text-slate-900">{medico.nombre} {medico.apellido}</span>
+              <span className="text-[10px] font-mono text-slate-500">{medico.especialidad}</span>
             </div>
 
             <UserButton />

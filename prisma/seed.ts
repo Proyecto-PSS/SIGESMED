@@ -18,6 +18,7 @@ const medicos = [
     apellido: 'Gómez',
     especialidad: 'TRAUMATOLOGIA_ORTOPEDIA',
     matricula: 'MN-84920',
+    email: 'martin.gomez@example.test',
     consultorio: 'Consultorio 104 - Sede Central',
   },
   {
@@ -26,6 +27,7 @@ const medicos = [
     apellido: 'Rossi',
     especialidad: 'CLINICA_MEDICA',
     matricula: 'MN-72154',
+    email: 'juan.rossi@example.test',
     consultorio: 'Consultorio 204 - Sede Central',
   },
   {
@@ -34,6 +36,7 @@ const medicos = [
     apellido: 'Martínez',
     especialidad: 'PEDIATRIA',
     matricula: 'MN-91203',
+    email: 'elena.martinez@example.test',
     consultorio: 'Centro Pediátrico Norte',
   },
 ] as const

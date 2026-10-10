@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
         id: medico.id,
         nombre: `${medico.nombre} ${medico.apellido}`,
         especialidad: medico.especialidad,
+        matricula: medico.matricula,
       },
       disponibilidades,
     })
