@@ -1,7 +1,6 @@
-import { headers, cookies } from 'next/headers'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { prisma } from './prisma'
-import { MedicoPerfil } from './types/agenda'
+import type { MedicoPerfil } from './types/agenda'
 
 export interface SessionUser {
   id: string
@@ -12,117 +11,87 @@ export interface SessionUser {
   matricula?: string
 }
 
-// Perfiles médicos registrados en el sistema (según especificación y wireframes)
-export const MEDICOS_REGISTRADOS: Record<string, MedicoPerfil> = {
-  med_001: {
-    id: 'med_001',
-    nombre: 'Martín',
-    apellido: 'Gómez',
-    rol: 'MEDICO',
-    especialidad: 'Traumatología y Ortopedia',
-    matricula: 'MN-84920',
-    consultorio: 'Consultorio 104 - Sede Central',
-  },
-  med_002: {
-    id: 'med_002',
-    nombre: 'Juan Carlos',
-    apellido: 'Rossi',
-    rol: 'MEDICO',
-    especialidad: 'Clínica Médica',
-    matricula: 'MN-72154',
-    consultorio: 'Consultorio 204 - Sede Central',
-  },
-  med_003: {
-    id: 'med_003',
-    nombre: 'Elena',
-    apellido: 'Martínez',
-    rol: 'MEDICO',
-    especialidad: 'Pediatría',
-    matricula: 'MN-91203',
-    consultorio: 'Centro Pediátrico Norte',
-  },
+type ClerkRole = 'medico' | 'paciente' | 'enfermera' | 'admin'
+const rolPorMetadata: Record<ClerkRole, SessionUser['rol']> = {
+  medico: 'MEDICO', paciente: 'PACIENTE', enfermera: 'ENFERMERA', admin: 'ADMIN',
 }
 
-/**
- * Abstracción unificada para obtener el usuario actual en el servidor.
- * Preparada para conectarse directamente a JWT/Cookies en US-01 y US-02 sin modificar la lógica de negocio.
- */
+function errorConEstado(message: string, statusCode: number) {
+  return Object.assign(new Error(message), { statusCode })
+}
+
+/** Obtiene el perfil de dominio asociado a la identidad Clerk autenticada. */
 export async function getCurrentUser(): Promise<SessionUser | null> {
-  // 1. Si existe header o cookie de sesión (o id de prueba), la respetamos
-  try {
-    const cookieStore = await cookies()
-    const sessionCookie = cookieStore.get('sigesmed_session')?.value
-    if (sessionCookie && MEDICOS_REGISTRADOS[sessionCookie]) {
-      return MEDICOS_REGISTRADOS[sessionCookie]
+  const { userId } = await auth()
+  if (!userId) return null
+
+  const identity = await currentUser()
+  if (!identity) return null
+  const metadata = identity.publicMetadata as { role?: string }
+  const role = metadata.role as ClerkRole | undefined
+  if (!role || !rolPorMetadata[role]) return null
+
+  const nombreClerk = identity.firstName || ''
+  const apellidoClerk = identity.lastName || ''
+  const base = { id: userId, nombre: nombreClerk, apellido: apellidoClerk, rol: rolPorMetadata[role] }
+
+  if (role === 'medico') {
+    const medico = await prisma.medico.findUnique({ where: { idMedico: userId } })
+    if (!medico) return null
+    const especialidades = {
+      CLINICA_MEDICA: 'Clínica Médica',
+      PEDIATRIA: 'Pediatría',
+      TRAUMATOLOGIA_ORTOPEDIA: 'Traumatología y Ortopedia',
+    } as const
+    return {
+      ...base, nombre: medico.nombre, apellido: medico.apellido,
+      especialidad: especialidades[medico.especialidad], matricula: medico.matricula,
     }
-  } catch {
-    // Si se llama fuera de contexto de request Next.js
   }
 
-  try {
-    const headersList = await headers()
-    const headerUserId = headersList.get('x-user-id')
-    if (headerUserId && MEDICOS_REGISTRADOS[headerUserId]) {
-      return MEDICOS_REGISTRADOS[headerUserId]
-    }
-  } catch {
-    // Si se llama fuera de contexto de request Next.js
+  if (role === 'enfermera') {
+    const enfermera = await prisma.enfermero.findUnique({ where: { idEnfermero: userId } })
+    return enfermera ? { ...base, nombre: enfermera.nombre, apellido: enfermera.apellido, matricula: enfermera.matricula } : null
   }
 
-  // 2. Fallback por defecto mientras US-01/US-02 se desarrollan: Dr. Martín Gómez (Traumatología)
-  return MEDICOS_REGISTRADOS['med_001']
+  if (role === 'paciente') {
+    const paciente = await prisma.paciente.findUnique({ where: { idPaciente: userId } })
+    return paciente ? { ...base, nombre: paciente.nombre, apellido: paciente.apellido } : null
+  }
+
+  return base
 }
 
-/**
- * Obtiene el médico autenticado actual y valida su rol.
- * Lanza error o retorna null si el usuario no tiene rol MEDICO.
- */
+/** Obtiene el médico actual y garantiza que el perfil exista en la base. */
 export async function getCurrentMedicalUser(): Promise<MedicoPerfil> {
   const user = await getCurrentUser()
-  if (!user) {
-    const error = new Error('No autorizado: sesión no encontrada')
-    ;(error as any).statusCode = 401
-    throw error
-  }
+  if (!user) throw errorConEstado('No autorizado: sesión no encontrada o perfil inexistente.', 401)
+  if (user.rol !== 'MEDICO') throw errorConEstado('Acceso denegado: se requiere perfil médico.', 403)
 
-  if (user.rol !== 'MEDICO') {
-    const error = new Error('Acceso denegado: se requiere perfil médico')
-    ;(error as any).statusCode = 403
-    throw error
-  }
-
-  const medico = MEDICOS_REGISTRADOS[user.id] || {
+  return {
     id: user.id,
     nombre: user.nombre,
     apellido: user.apellido,
-    rol: 'MEDICO' as const,
-    especialidad: user.especialidad || 'Clínica General',
-    matricula: user.matricula || 'MN-00000',
+    rol: 'MEDICO',
+    especialidad: user.especialidad || 'Clínica Médica',
+    matricula: user.matricula || '',
   }
-
-  return medico
 }
 
+export async function getCurrentNurseUser(): Promise<SessionUser> {
+  const user = await getCurrentUser()
+  if (!user) throw errorConEstado('No autorizado: sesión no encontrada o perfil inexistente.', 401)
+  if (user.rol !== 'ENFERMERA') throw errorConEstado('Acceso denegado: se requiere perfil de enfermería.', 403)
+  return user
+}
+
+/** Resuelve exclusivamente el paciente vinculado al ID Clerk de la sesión. */
 export async function getCurrentPatient() {
-  const { userId } = await auth()
-  if (!userId) {
-    throw new Error('No autorizado: sesión de paciente no encontrada')
-  }
+  const user = await getCurrentUser()
+  if (!user) throw errorConEstado('No autorizado: sesión de paciente no encontrada.', 401)
+  if (user.rol !== 'PACIENTE') throw errorConEstado('Acceso denegado: se requiere perfil de paciente.', 403)
 
-  const user = await currentUser()
-  const email = user?.emailAddresses[0]?.emailAddress
-  const paciente = await prisma.paciente.findFirst({
-    where: {
-      OR: [
-        { idPaciente: userId },
-        ...(email ? [{ email }] : []),
-      ],
-    },
-  })
-
-  if (!paciente) {
-    throw new Error('No se encontró un paciente asociado a la sesión actual')
-  }
-
+  const paciente = await prisma.paciente.findUnique({ where: { idPaciente: user.id } })
+  if (!paciente) throw errorConEstado('No se encontró un paciente asociado a la sesión actual.', 404)
   return paciente
 }

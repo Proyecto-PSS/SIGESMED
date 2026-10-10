@@ -42,9 +42,9 @@ export default function AgendaMedicaPage() {
 
   // Datos del médico logueado
   const [medico, setMedico] = useState({
-    nombre: 'Dr. Martín Gómez',
-    especialidad: 'Traumatología',
-    matricula: 'MN-84920',
+    nombre: '',
+    especialidad: '',
+    matricula: '',
   })
 
   // Modal de Publicación (US-04)
@@ -70,7 +70,7 @@ export default function AgendaMedicaPage() {
         setMedico({
           nombre: data.medico.nombre,
           especialidad: data.medico.especialidad.replace(' y Ortopedia', ''),
-          matricula: 'MN-84920',
+          matricula: data.medico.matricula,
         })
       }
 
