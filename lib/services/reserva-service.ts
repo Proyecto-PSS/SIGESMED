@@ -1,5 +1,6 @@
 // Confirma un turno disponible asociándolo al paciente autenticado con soporte de idempotencia y concurrencia (US-09 y US-18).
 import { prisma } from '@/lib/prisma'
+import { RecordatoriosService } from '@/lib/services/recordatorios-service'
 
 export interface OpcionesConfirmacion {
   idempotencyKey?: string
@@ -27,7 +28,7 @@ export async function confirmarTurno(
 ): Promise<ResultadoConfirmacion> {
   const { idempotencyKey, modalidad = 'PARTICULAR' } = opciones ?? {}
 
-  return prisma.$transaction(async (tx) => {
+  const resultado = await prisma.$transaction(async (tx) => {
     // 1. Si se envía idempotencyKey, verificar si ya existe una reserva confirmada con dicha clave
     if (idempotencyKey) {
       const turnoConKey = await tx.turno.findFirst({
@@ -127,6 +128,27 @@ export async function confirmarTurno(
       idempotent: false,
     }
   })
+
+  // US-15: Programación automática del recordatorio para turnos confirmados.
+  // La reserva y el recordatorio son operaciones independientes: cualquier error en la programación
+  // se captura y no revierte ni afecta el éxito de la reserva.
+  if (resultado.turno && !resultado.idempotent) {
+    try {
+      await RecordatoriosService.programarRecordatorio({
+        idTurno: resultado.turno.idTurno,
+        idPaciente,
+        fechaTurno: resultado.turno.fecha,
+        horaTurno: resultado.turno.hora,
+      })
+    } catch (reminderErr) {
+      console.error(
+        '[RESERVA-SERVICE] Error no bloqueante al programar recordatorio de turno:',
+        reminderErr
+      )
+    }
+  }
+
+  return resultado
 }
 
 export async function consultarEstadoReserva(

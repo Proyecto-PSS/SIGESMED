@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { RecordatoriosService } from '@/lib/services/recordatorios-service'
 
 export async function obtenerCitasPaciente(idPaciente: string) {
   return prisma.turno.findMany({
@@ -108,6 +109,21 @@ export async function cancelarCitaPaciente(
       idempotencyKey: null,
     },
   })
+
+  if (actualizado.count === 1) {
+    // US-15: Cancelar recordatorios pendientes asociados al turno cancelado
+    try {
+      await RecordatoriosService.cancelarRecordatoriosTurno(
+        idTurno,
+        'Cancelado por el paciente'
+      )
+    } catch (err) {
+      console.error(
+        '[CITAS-SERVICE] Error no bloqueante al cancelar recordatorios:',
+        err
+      )
+    }
+  }
 
   if (actualizado.count !== 1) {
     const turnoRevisado = await prisma.turno.findUnique({

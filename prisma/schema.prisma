@@ -32,6 +32,15 @@ enum EstadoTurnoVacunacion {
   APLICADO
 }
 
+enum EstadoRecordatorio {
+  PENDIENTE
+  PROCESANDO
+  ENVIADO
+  REINTENTO_PROGRAMADO
+  FALLIDO
+  CANCELADO
+}
+
 model Medico {
   idMedico     String             @id @map("id_medico")
   nombre       String
@@ -65,6 +74,7 @@ model Paciente {
 
   turnos            Turno[]
   turnosVacunacion  TurnoVacunacion[]
+  recordatorios     RecordatorioTurno[]
 
   @@map("pacientes")
 }
@@ -108,6 +118,7 @@ model Turno {
   medico        Medico               @relation(fields: [idMedico], references: [idMedico], onDelete: Restrict)
   paciente      Paciente?            @relation(fields: [idPaciente], references: [idPaciente], onDelete: SetNull)
   disponibilidad DisponibilidadMedica @relation(fields: [idDisponibilidadMedica], references: [idDisponibilidadMedica], onDelete: Restrict)
+  recordatorios RecordatorioTurno[]
 
   @@unique([idMedico, fecha, hora])
   @@index([idMedico, fecha])
@@ -161,3 +172,27 @@ model TurnoVacunacion {
   @@index([idVacuna, fecha])
   @@map("turnos_vacunacion")
 }
+
+model RecordatorioTurno {
+  idRecordatorio   String             @id @default(cuid()) @map("id_recordatorio")
+  idTurno          String             @map("id_turno")
+  idPaciente       String             @map("id_paciente")
+  estado           EstadoRecordatorio @default(PENDIENTE)
+  intentos         Int                @default(0) @db.SmallInt
+  programadoPara   DateTime           @map("programado_para") @db.Timestamptz(3)
+  ultimoIntentoAt  DateTime?          @map("ultimo_intento_at") @db.Timestamptz(3)
+  enviadoAt        DateTime?          @map("enviado_at") @db.Timestamptz(3)
+  ultimoError      String?            @map("ultimo_error")
+  ciclo            Int                @default(1) @db.SmallInt
+  createdAt        DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime           @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  turno    Turno    @relation(fields: [idTurno], references: [idTurno], onDelete: Cascade)
+  paciente Paciente @relation(fields: [idPaciente], references: [idPaciente], onDelete: Cascade)
+
+  @@index([estado, programadoPara])
+  @@index([idTurno, estado])
+  @@index([idPaciente])
+  @@map("recordatorios_turnos")
+}
+
