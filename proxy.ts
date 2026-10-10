@@ -1,83 +1,65 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+import { clerkClient, clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
+import { NextResponse } from 'next/server'
 
-const dashboardRoutes = createRouteMatcher([
-  "/dashboard/(.*)",
-]);
+const dashboardRoutes = createRouteMatcher(['/dashboard/(.*)'])
+const roleDashboard: Record<string, string> = {
+  paciente: '/dashboard/paciente',
+  medico: '/dashboard/medico',
+  enfermera: '/dashboard/enfermero',
+  admin: '/dashboard/admin',
+}
 
-export default clerkMiddleware(async (auth, req) => {
-  const { userId, sessionClaims } = await auth();
+export default clerkMiddleware(async (auth, request) => {
+  const { userId } = await auth()
+  const path = request.nextUrl.pathname
 
-  // Si intenta acceder a un dashboard sin estar autenticado,
-  // lo enviamos al inicio de sesión.
-  if (dashboardRoutes(req) && !userId) {
-    return NextResponse.redirect(new URL("/sign-in", req.url));
+  if (dashboardRoutes(request) && !userId) {
+    return NextResponse.redirect(new URL('/sign-in', request.url))
+  }
+  if (!userId) return NextResponse.next()
+
+  // Clerk's session token may not contain custom metadata unless the instance
+  // has a session claim configured. Read backend metadata for protected app pages.
+  const needsIdentity = dashboardRoutes(request) || path === '/' || path === '/cambiar-password' || path === '/acceso-denegado'
+  if (!needsIdentity) return NextResponse.next()
+
+  let metadata: { role?: string; mustChangePassword?: boolean }
+  try {
+    const user = await (await clerkClient()).users.getUser(userId)
+    metadata = user.publicMetadata as { role?: string; mustChangePassword?: boolean }
+  } catch {
+    return NextResponse.redirect(new URL('/acceso-denegado', request.url))
   }
 
-  // Si no está autenticado, dejamos que Clerk maneje
-  // normalmente las rutas públicas y su propio flujo.
-  if (!userId) {
-    return NextResponse.next();
+  const dashboard = metadata.role ? roleDashboard[metadata.role] : undefined
+  if (metadata.mustChangePassword && path !== '/cambiar-password') {
+    return NextResponse.redirect(new URL('/cambiar-password', request.url))
   }
-
-  // Obtenemos el rol guardado en Public Metadata de Clerk.
-  const metadata = sessionClaims?.metadata as { role?: string } | undefined;
-  const role = metadata?.role;
-
-  const dashboardByRole: Record<string, string> = {
-    paciente: "/dashboard/paciente",
-    medico: "/dashboard/medico",
-    enfermero: "/dashboard/enfermero",
-    admin: "/dashboard/admin",
-  };
-
-  const userDashboard = role ? dashboardByRole[role] : undefined;
-  // La página de acceso denegado solo corresponde
-  // a usuarios autenticados sin un rol válido.
-  if (req.nextUrl.pathname === "/acceso-denegado" && userDashboard) {
-    return NextResponse.redirect(new URL(userDashboard, req.url));
+  if (path === '/cambiar-password' && !metadata.mustChangePassword) {
+    return NextResponse.redirect(new URL(dashboard || '/acceso-denegado', request.url))
   }
-
-  // Si el usuario está autenticado pero no tiene un rol válido,
-  // no permitimos el acceso a ningún dashboard.
-  if (!userDashboard && dashboardRoutes(req)) {
-    return NextResponse.redirect(new URL("/acceso-denegado", req.url));
+  if (path === '/acceso-denegado' && dashboard) {
+    return NextResponse.redirect(new URL(dashboard, request.url))
   }
-
-  // Si está en la página principal y tiene un rol válido,
-  // lo mandamos a su dashboard.
-  if (req.nextUrl.pathname === "/" && userDashboard) {
-    return NextResponse.redirect(new URL(userDashboard, req.url));
+  if (path === '/' && dashboard) {
+    return NextResponse.redirect(new URL(dashboard, request.url))
   }
-
-  // Si está autenticado pero no tiene un rol válido,
-  // lo mandamos a la página de acceso denegado.
-  if (req.nextUrl.pathname === "/" && !userDashboard) {
-    return NextResponse.redirect(new URL("/acceso-denegado", req.url));
+  if (path === '/' && !dashboard) {
+    return NextResponse.redirect(new URL('/acceso-denegado', request.url))
   }
-
-  // Si intenta acceder a otro dashboard, lo devolvemos
-  // al dashboard correspondiente a su rol.
-  if (dashboardRoutes(req) && userDashboard) {
-    const requestedPath = req.nextUrl.pathname;
-
-    const isOwnDashboard =
-      requestedPath === userDashboard ||
-      requestedPath.startsWith(`${userDashboard}/`);
-
+  if (dashboardRoutes(request)) {
+    const isOwnDashboard = dashboard && (path === dashboard || path.startsWith(`${dashboard}/`))
     if (!isOwnDashboard) {
-      return NextResponse.redirect(new URL(userDashboard, req.url));
+      return NextResponse.redirect(new URL(dashboard || '/acceso-denegado', request.url))
     }
   }
 
-  return NextResponse.next();
-});
+  return NextResponse.next()
+})
 
 export const config = {
   matcher: [
-    // No aplicamos nuestro middleware a las rutas internas
-    // utilizadas por Clerk durante el proceso de autenticación.
-    "/((?!_next|factor-one|sign-in|sign-up|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    "/(api|trpc)(.*)",
+    '/((?!_next|factor-one|sign-in|sign-up|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    '/(api|trpc)(.*)',
   ],
-};
+}
