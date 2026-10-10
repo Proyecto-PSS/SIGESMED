@@ -44,8 +44,11 @@ export default function ShiftConfigCard({
       <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
         <div className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 rounded-full bg-black" />
-          <h4 className="text-xs sm:text-sm font-mono font-bold tracking-wide text-slate-900 uppercase">
+          <h4 className="text-xs sm:text-sm font-mono font-bold tracking-wide text-slate-900 uppercase flex items-center gap-2">
             Franja {numeroFormateado} — {NOMBRES_DIAS[dia]}
+            <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800 font-sans tracking-normal capitalize">
+              Mín. 48hs anticipación
+            </span>
           </h4>
         </div>
         <button

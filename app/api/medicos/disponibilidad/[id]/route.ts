@@ -24,7 +24,7 @@ export async function PUT(
       )
     }
 
-    const { disponibilidad } = await AgendaService.guardarDisponibilidad(medico.id, {
+    const { disponibilidad, turnosCancelados } = await AgendaService.guardarDisponibilidadConEmails(medico.id, {
       mes_vigencia,
       dia_semana: Number(dia_semana) as any,
       hora_desde,
@@ -32,9 +32,15 @@ export async function PUT(
       duracion_turno_minutos: Number(duracion_turno_minutos) as any,
     })
 
+    let successMessage = 'Horarios actualizados.'
+    if (turnosCancelados && turnosCancelados > 0) {
+      successMessage = `Horarios actualizados. Se cancelaron ${turnosCancelados} turnos automáticamente`
+    }
+
     return NextResponse.json({
-      message: 'Disponibilidad modificada exitosamente',
+      message: successMessage,
       disponibilidad,
+      turnos_cancelados: turnosCancelados
     })
   } catch (error: any) {
     const message = error.message || 'Error al modificar disponibilidad'
@@ -63,15 +69,22 @@ export async function DELETE(
     const medico = await getCurrentMedicalUser()
     const { id } = await params
 
-    await AgendaService.eliminarDisponibilidad(medico.id, id)
+    const { turnosCancelados } = await AgendaService.eliminarDisponibilidad(medico.id, id)
+
+    let successMessage = 'Horarios actualizados.'
+    if (turnosCancelados && turnosCancelados > 0) {
+      successMessage = `Horarios actualizados. Se cancelaron ${turnosCancelados} turnos automáticamente`
+    }
 
     return NextResponse.json({
       success: true,
-      message: 'Configuración eliminada exitosamente',
+      message: successMessage,
+      turnos_cancelados: turnosCancelados
     })
   } catch (error: any) {
     const message = error.message || 'Error al eliminar configuración'
-    const status = error.statusCode || (message.includes('No se puede eliminar') ? 409 : 400)
+    const isConflict = message.includes('No se puede modificar') || message.includes('No se pueden modificar') || message.includes('No se puede eliminar')
+    const status = error.statusCode || (isConflict ? 409 : 400)
     return NextResponse.json(
       {
         success: false,
