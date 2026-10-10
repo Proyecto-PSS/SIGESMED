@@ -91,7 +91,10 @@ body {
 
 @media (min-width: 1024px) {
   .lg\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .lg\:grid-cols-12 { grid-template-columns: repeat(12, minmax(0, 1fr)); }
   .lg\:col-span-2 { grid-column: span 2 / span 2; }
+  .lg\:col-span-5 { grid-column: span 5 / span 5; }
+  .lg\:col-span-7 { grid-column: span 7 / span 7; }
   .lg\:p-8 { padding: 2rem; }
 }
 
@@ -209,39 +212,79 @@ body {
 
 .text-emerald-700 { color: #047857; }
 .text-emerald-600 { color: #059669; }
+.text-emerald-800 { color: #065f46; }
+.text-amber-600 { color: #d97706; }
 .text-amber-700 { color: #b45309; }
+.text-amber-800 { color: #92400e; }
 .text-rose-600 { color: #e11d48; }
+.text-rose-700 { color: #be123c; }
+.text-rose-800 { color: #9f1239; }
+.text-rose-900 { color: #881337; }
+.text-blue-600 { color: #2563eb; }
+.text-blue-700 { color: #1d4ed8; }
+.text-blue-800 { color: #1e40af; }
 
 /* Fondos */
 .bg-white { background-color: #ffffff; }
+.bg-white\/70 { background-color: rgba(255, 255, 255, 0.7); }
 .bg-slate-50 { background-color: #f8fafc; }
+.bg-slate-50\/50 { background-color: rgba(248, 250, 252, 0.5); }
 .bg-slate-100 { background-color: #f1f5f9; }
 .bg-slate-200 { background-color: #e2e8f0; }
+.bg-slate-400 { background-color: #94a3b8; }
+.bg-slate-500 { background-color: #64748b; }
+.bg-slate-600 { background-color: #475569; }
+.bg-slate-700 { background-color: #334155; }
 .bg-slate-800 { background-color: #1e293b; }
 .bg-slate-900 { background-color: #0f172a; }
 .bg-slate-950 { background-color: #020617; }
 .bg-black { background-color: #000000; }
 .bg-black\/60 { background-color: rgba(0, 0, 0, 0.6); }
 
+.bg-blue-50 { background-color: #eff6ff; }
+.bg-blue-100 { background-color: #dbeafe; }
+.bg-blue-500 { background-color: #3b82f6; }
+.bg-blue-600 { background-color: #2563eb; }
+.bg-blue-700 { background-color: #1d4ed8; }
+
 .bg-emerald-50 { background-color: #ecfdf5; }
+.bg-emerald-100 { background-color: #d1fae5; }
+.bg-emerald-400 { background-color: #34d399; }
 .bg-emerald-500 { background-color: #10b981; }
+.bg-emerald-600 { background-color: #059669; }
+.bg-emerald-700 { background-color: #047857; }
+
 .bg-amber-50 { background-color: #fffbeb; }
+.bg-amber-50\/40 { background-color: rgba(254, 252, 232, 0.4); }
 .bg-amber-100 { background-color: #fef3c7; }
+.bg-amber-500 { background-color: #f59e0b; }
+
 .bg-rose-50 { background-color: #fff1f2; }
+.bg-rose-50\/40 { background-color: rgba(255, 241, 242, 0.4); }
+.bg-rose-100 { background-color: #ffe4e6; }
+.bg-rose-200 { background-color: #fecdd3; }
+.bg-rose-200\/60 { background-color: rgba(254, 205, 211, 0.6); }
+.bg-rose-500 { background-color: #f43f5e; }
 
 /* Bordes */
 .border { border-width: 1px; border-style: solid; border-color: var(--border-light); }
 .border-b { border-bottom-width: 1px; border-bottom-style: solid; }
 .border-t { border-top-width: 1px; border-top-style: solid; }
+.border-y { border-top-width: 1px; border-bottom-width: 1px; border-style: solid; border-color: var(--border-light); }
 .border-dashed { border-style: dashed; }
 .border-slate-200 { border-color: #e2e8f0; }
 .border-slate-300 { border-color: #cbd5e1; }
 .border-slate-400 { border-color: #94a3b8; }
 .border-slate-800 { border-color: #1e293b; }
 .border-black { border-color: #000000; }
+.border-blue-200 { border-color: #bfdbfe; }
+.border-blue-300 { border-color: #93c5fd; }
 .border-emerald-200 { border-color: #a7f3d0; }
+.border-emerald-300 { border-color: #6ee7b7; }
 .border-amber-200 { border-color: #fde68a; }
+.border-amber-300 { border-color: #fcd34d; }
 .border-rose-200 { border-color: #fecdd3; }
+.border-rose-300 { border-color: #fda4af; }
 
 .rounded-lg { border-radius: 0.5rem; }
 .rounded-xl { border-radius: 0.75rem; }
@@ -283,6 +326,8 @@ body {
 .max-w-4xl { max-width: 56rem; }
 .max-w-5xl { max-width: 64rem; }
 .max-w-6xl { max-width: 72rem; }
+.max-w-7xl { max-width: 80rem; }
+.max-w-\[1400px\] { max-width: 1400px; }
 .max-h-\[320px\] { max-height: 320px; }
 .max-h-\[420px\] { max-height: 420px; }
 
@@ -330,14 +375,31 @@ a:not([class*="bg-slate-950"]):not([class*="bg-black"]) {
 .transition-colors { transition: color 150ms, background-color 150ms, border-color 150ms; }
 
 .hover\:bg-slate-50:hover { background-color: #f8fafc; }
+.hover\:bg-slate-50\/50:hover { background-color: rgba(248, 250, 252, 0.5); }
 .hover\:bg-slate-100:hover { background-color: #f1f5f9; }
 .hover\:bg-slate-200:hover { background-color: #e2e8f0; }
+.hover\:bg-slate-700:hover { background-color: #334155; }
 .hover\:bg-slate-800:hover { background-color: #1e293b; }
 .hover\:bg-black:hover { background-color: #000000; }
+.hover\:bg-blue-100:hover { background-color: #dbeafe; }
+.hover\:bg-blue-700:hover { background-color: #1d4ed8; }
+.hover\:bg-emerald-100:hover { background-color: #d1fae5; }
+.hover\:bg-emerald-700:hover { background-color: #047857; }
+.hover\:bg-rose-100:hover { background-color: #ffe4e6; }
+.hover\:bg-rose-200:hover { background-color: #fecdd3; }
 .hover\:text-white:hover { color: #ffffff; }
 .hover\:text-black:hover { color: #000000; }
 .hover\:border-slate-400:hover { border-color: #94a3b8; }
 .hover\:border-black:hover { border-color: #000000; }
+
+.cursor-not-allowed { cursor: not-allowed; }
+.active\:scale-95:active { transform: scale(0.95); }
+
+.focus\:outline-none:focus { outline: none; }
+.focus\:ring-2:focus { box-shadow: 0 0 0 2px #0f172a; }
+.focus\:ring-slate-900:focus { box-shadow: 0 0 0 2px #0f172a; }
+.focus\:ring-black:focus { box-shadow: 0 0 0 2px #000000; }
+.focus\:ring-blue-500:focus { box-shadow: 0 0 0 2px #3b82f6; }
 
 .shadow-sm { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
 .shadow-md { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
@@ -363,3 +425,17 @@ input[type="time"] {
   50% { opacity: 0.5; }
 }
 .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+
+@keyframes ping {
+  75%, 100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+.animate-ping { animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in { animation: fadeIn 0.2s ease-out forwards; }
