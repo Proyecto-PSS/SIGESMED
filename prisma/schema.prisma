@@ -41,6 +41,13 @@ enum EstadoRecordatorio {
   CANCELADO
 }
 
+enum TipoMovimientoStock {
+  INGRESO
+  AJUSTE
+  CONSUMO
+  LIBERACION
+}
+
 model Medico {
   idMedico     String             @id @map("id_medico")
   nombre       String
@@ -136,7 +143,8 @@ model Enfermero {
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  turnos TurnoVacunacion[]
+  turnos           TurnoVacunacion[]
+  movimientosStock MovimientoStockVacuna[]
 
   @@map("enfermeros")
 }
@@ -145,27 +153,71 @@ model Vacuna {
   idVacuna  String   @id @default(cuid()) @map("id_vacuna")
   nombre    String   @unique
   stock     Int      @default(0)
-  createdAt DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  turnos TurnoVacunacion[]
+  turnos      TurnoVacunacion[]
+  lotes       LoteVacuna[]
+  movimientos MovimientoStockVacuna[]
 
   @@map("vacunas")
 }
 
-model TurnoVacunacion {
-  idTurnoVacunacion String                 @id @default(cuid()) @map("id_turno_vacunacion")
-  idPaciente        String?                @map("id_paciente")
-  idEnfermero       String                 @map("id_enfermero")
-  idVacuna          String                 @map("id_vacuna")
-  fecha             DateTime               @db.Date
-  hora              String                 @db.VarChar(5)
-  estado            EstadoTurnoVacunacion  @default(DISPONIBLE)
-  createdAt         DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+model LoteVacuna {
+  idLote      String    @id @default(cuid()) @map("id_lote")
+  idVacuna    String    @map("id_vacuna")
+  numeroLote  String    @map("numero_lote")
+  stock       Int       @default(0)
+  vencimiento DateTime? @db.Date
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  paciente  Paciente? @relation(fields: [idPaciente], references: [idPaciente], onDelete: SetNull)
-  enfermero Enfermero @relation(fields: [idEnfermero], references: [idEnfermero], onDelete: Restrict)
-  vacuna    Vacuna    @relation(fields: [idVacuna], references: [idVacuna], onDelete: Restrict)
+  vacuna      Vacuna                  @relation(fields: [idVacuna], references: [idVacuna], onDelete: Cascade)
+  turnos      TurnoVacunacion[]
+  movimientos MovimientoStockVacuna[]
+
+  @@unique([idVacuna, numeroLote])
+  @@index([idVacuna])
+  @@map("lotes_vacunas")
+}
+
+model MovimientoStockVacuna {
+  idMovimiento   String              @id @default(cuid()) @map("id_movimiento")
+  idVacuna       String              @map("id_vacuna")
+  idLote         String?             @map("id_lote")
+  idEnfermero    String?             @map("id_enfermero")
+  tipoMovimiento TipoMovimientoStock @map("tipo_movimiento")
+  cantidad       Int
+  stockAnterior  Int                 @map("stock_anterior")
+  stockNuevo     Int                 @map("stock_nuevo")
+  motivo         String?
+  idempotencyKey String?             @unique @map("idempotency_key")
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  vacuna    Vacuna      @relation(fields: [idVacuna], references: [idVacuna], onDelete: Cascade)
+  lote      LoteVacuna? @relation(fields: [idLote], references: [idLote], onDelete: SetNull)
+  enfermero Enfermero?  @relation(fields: [idEnfermero], references: [idEnfermero], onDelete: SetNull)
+
+  @@index([idVacuna, createdAt])
+  @@map("movimientos_stock_vacunas")
+}
+
+model TurnoVacunacion {
+  idTurnoVacunacion String                @id @default(cuid()) @map("id_turno_vacunacion")
+  idPaciente        String?               @map("id_paciente")
+  idEnfermero       String                @map("id_enfermero")
+  idVacuna          String                @map("id_vacuna")
+  idLote            String?               @map("id_lote")
+  fecha             DateTime              @db.Date
+  hora              String                @db.VarChar(5)
+  estado            EstadoTurnoVacunacion @default(DISPONIBLE)
+  idempotencyKey    String?               @unique @map("idempotency_key")
+  createdAt         DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  paciente  Paciente?   @relation(fields: [idPaciente], references: [idPaciente], onDelete: SetNull)
+  enfermero Enfermero   @relation(fields: [idEnfermero], references: [idEnfermero], onDelete: Restrict)
+  vacuna    Vacuna      @relation(fields: [idVacuna], references: [idVacuna], onDelete: Restrict)
+  lote      LoteVacuna? @relation(fields: [idLote], references: [idLote], onDelete: SetNull)
 
   @@unique([idEnfermero, fecha, hora])
   @@index([idPaciente, fecha])

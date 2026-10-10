@@ -74,8 +74,28 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
   }
 
   if (role === 'enfermera' || role === 'enfermero') {
-    const enfermera = await prisma.enfermero.findUnique({ where: { idEnfermero: userId } })
-    return enfermera ? { ...base, nombre: enfermera.nombre, apellido: enfermera.apellido, matricula: enfermera.matricula } : null
+    let enfermera = await prisma.enfermero.findUnique({ where: { idEnfermero: userId } })
+    if (!enfermera && emailClerk) {
+      enfermera = await prisma.enfermero.findUnique({ where: { email: emailClerk } })
+    }
+    if (!enfermera) {
+      try {
+        enfermera = await prisma.enfermero.create({
+          data: {
+            idEnfermero: userId,
+            nombre: identity?.firstName || 'Enfermero/a',
+            apellido: identity?.lastName || 'Staff',
+            email: emailClerk || `${userId}@enfermeria.sigesmed.test`,
+            matricula: (metadata as any)?.matricula || `MAT-${userId.slice(-6).toUpperCase()}`,
+          },
+        })
+      } catch {
+        // fallback
+      }
+    }
+    return enfermera
+      ? { ...base, nombre: enfermera.nombre, apellido: enfermera.apellido, matricula: enfermera.matricula }
+      : { ...base, matricula: (metadata as any)?.matricula || 'MAT-STAFF' }
   }
 
   if (role === 'paciente') {
