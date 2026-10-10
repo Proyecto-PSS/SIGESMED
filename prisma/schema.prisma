@@ -38,6 +38,7 @@ model Medico {
   apellido     String
   especialidad EspecialidadMedica
   matricula    String             @unique
+  email        String             @unique
   consultorio  String?
   direccion    String?
   createdAt    DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
@@ -57,6 +58,8 @@ model Paciente {
   dni        String   @unique
   email      String   @unique
   telefono   String?
+  obraSocial String?  @map("obra_social")
+  numeroAfiliado String? @map("numero_afiliado")
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -114,9 +117,11 @@ model Turno {
 }
 
 model Enfermero {
-  idEnfermero String   @id @default(cuid()) @map("id_enfermero")
+  idEnfermero String   @id @map("id_enfermero")
   nombre      String
-  apellido    String?
+  apellido    String
+  email       String   @unique
+  matricula   String   @unique
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 

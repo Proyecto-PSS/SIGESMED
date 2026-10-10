@@ -1,6 +1,8 @@
 import { UserButton } from '@clerk/nextjs'
+import { getCurrentNurseUser } from '@/lib/auth'
 
-export default function EnfermeroDashboardPage() {
+export default async function EnfermeroDashboardPage() {
+  const enfermera = await getCurrentNurseUser()
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-900 p-4 sm:p-6 lg:p-8">
       <div className="max-w-5xl mx-auto space-y-6">
@@ -16,8 +18,8 @@ export default function EnfermeroDashboardPage() {
 
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 bg-white border border-slate-200 px-3 py-1.5 rounded-lg">
-              <span className="text-xs font-bold text-slate-900">Enf. Valeria Ríos</span>
-              <span className="text-[10px] font-mono text-slate-500">Vacunatorio Central</span>
+              <span className="text-xs font-bold text-slate-900">{enfermera.nombre} {enfermera.apellido}</span>
+              <span className="text-[10px] font-mono text-slate-500">Matrícula {enfermera.matricula}</span>
             </div>
 
             <UserButton />
