@@ -9,6 +9,7 @@ export interface SessionUser {
   rol: 'MEDICO' | 'PACIENTE' | 'ENFERMERA' | 'ADMIN'
   especialidad?: string
   matricula?: string
+  consultorio?: string
 }
 
 type ClerkRole = 'medico' | 'paciente' | 'enfermera' | 'enfermero' | 'admin'
@@ -60,16 +61,63 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
   const base = { id: userId, nombre: nombreClerk, apellido: apellidoClerk, rol: rolPorMetadata[role] }
 
   if (role === 'medico') {
-    const medico = await prisma.medico.findUnique({ where: { idMedico: userId } })
+    let medico = await prisma.medico.findUnique({ where: { idMedico: userId } })
+    if (!medico && emailClerk) {
+      medico = await prisma.medico.findUnique({ where: { email: emailClerk } })
+      if (medico && medico.idMedico !== userId) {
+        try {
+          medico = await prisma.medico.update({
+            where: { email: emailClerk },
+            data: { idMedico: userId },
+          })
+        } catch {
+          // Si no se puede actualizar por restricciones foráneas existentes, mantenemos el médico encontrado
+        }
+      }
+    }
+
+    if (!medico) {
+      try {
+        const rawEsp = (metadata as any)?.especialidad as string | undefined
+        const especialidadValida: 'CLINICA_MEDICA' | 'PEDIATRIA' | 'TRAUMATOLOGIA_ORTOPEDIA' =
+          rawEsp === 'PEDIATRIA' || rawEsp === 'TRAUMATOLOGIA_ORTOPEDIA'
+            ? rawEsp
+            : 'CLINICA_MEDICA'
+
+        medico = await prisma.medico.create({
+          data: {
+            idMedico: userId,
+            nombre: nombreClerk || 'Médico',
+            apellido: apellidoClerk || 'Profesional',
+            especialidad: especialidadValida,
+            matricula: (metadata as any)?.matricula || `MN-${userId.slice(-6).toUpperCase()}`,
+            email: emailClerk || `${userId}@medico.sigesmed.test`,
+            consultorio: (metadata as any)?.consultorio || 'Consultorio 101',
+          },
+        })
+      } catch {
+        if (emailClerk) {
+          medico = await prisma.medico.findUnique({ where: { email: emailClerk } })
+        }
+      }
+    }
+
     if (!medico) return null
+
     const especialidades = {
       CLINICA_MEDICA: 'Clínica Médica',
       PEDIATRIA: 'Pediatría',
       TRAUMATOLOGIA_ORTOPEDIA: 'Traumatología y Ortopedia',
     } as const
+
     return {
-      ...base, nombre: medico.nombre, apellido: medico.apellido,
-      especialidad: especialidades[medico.especialidad], matricula: medico.matricula,
+      ...base,
+      id: medico.idMedico,
+      nombre: medico.nombre,
+      apellido: medico.apellido,
+      especialidad: especialidades[medico.especialidad] || 'Clínica Médica',
+      matricula: medico.matricula,
+      consultorio: medico.consultorio || undefined,
     }
   }
 
@@ -172,6 +220,7 @@ export async function getCurrentMedicalUser(): Promise<MedicoPerfil> {
     rol: 'MEDICO',
     especialidad: user.especialidad || 'Clínica Médica',
     matricula: user.matricula || '',
+    consultorio: user.consultorio,
   }
 }
 
