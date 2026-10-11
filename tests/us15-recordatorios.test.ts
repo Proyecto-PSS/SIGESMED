@@ -1,4 +1,5 @@
 // Suite exhaustiva de pruebas para US-15: Recordatorios de turnos por email, estados, reintentos y reprogramación.
+import 'dotenv/config'
 import assert from 'node:assert/strict'
 import { RECORDATORIOS_CONFIG } from '../lib/config/recordatorios-config.ts'
 import {
@@ -11,6 +12,8 @@ import {
   EmailService,
   type DatosRecordatorioEmail,
 } from '../lib/services/email-service.ts'
+import { prisma } from '../lib/prisma.ts'
+import { RecordatoriosService } from '../lib/services/recordatorios-service.ts'
 
 function test(nombre: string, run: () => void | Promise<void>) {
   return Promise.resolve()
@@ -18,6 +21,105 @@ function test(nombre: string, run: () => void | Promise<void>) {
     .then(() => {
       process.stdout.write(`✓ ${nombre}\n`)
     })
+}
+
+// --------------------------------------------------------------------------
+// Datos y helpers para el Grupo 6 (integración real contra Postgres/Neon).
+// Aislados con IDs dedicados para no chocar con datos reales del equipo.
+// --------------------------------------------------------------------------
+const ID_MEDICO_TEST = 'test-us15-medico'
+const EMAIL_MEDICO_TEST = 'test-us15-medico@sigesmed.test'
+const MATRICULA_TEST = 'MN-TEST-US15'
+const ID_PACIENTE_TEST = 'test-us15-paciente'
+const DNI_PACIENTE_TEST = '99999901'
+const EMAIL_PACIENTE_TEST = 'test-us15-paciente@sigesmed.test'
+const ID_PACIENTE_FALLO_TEST = 'test-us15-paciente-fallo'
+const DNI_PACIENTE_FALLO_TEST = '99999902'
+const EMAIL_PACIENTE_INVALIDO = 'email-sin-arroba-test-us15' // a propósito, sin "@", para forzar el fallo permanente
+const HORA_TURNO = '10:00'
+
+function fechaFutura(diasAdelante: number): string {
+  const d = new Date()
+  d.setUTCDate(d.getUTCDate() + diasAdelante)
+  return d.toISOString().slice(0, 10)
+}
+
+const FECHA_TURNO_OK = fechaFutura(10)
+const FECHA_TURNO_FALLO = fechaFutura(11)
+
+let idTurnoTest = ''
+let idTurnoFalloTest = ''
+let idRecordatorioTest = ''
+let idRecordatorioFalloTest = ''
+
+async function limpiarDatosDeTest() {
+  await prisma.recordatorioTurno.deleteMany({
+    where: { idPaciente: { in: [ID_PACIENTE_TEST, ID_PACIENTE_FALLO_TEST] } },
+  })
+  await prisma.turno.deleteMany({ where: { idMedico: ID_MEDICO_TEST } })
+  await prisma.disponibilidadMedica.deleteMany({ where: { idMedico: ID_MEDICO_TEST } })
+}
+
+async function setupDatosDeTest() {
+  await prisma.medico.upsert({
+    where: { idMedico: ID_MEDICO_TEST },
+    create: {
+      idMedico: ID_MEDICO_TEST,
+      nombre: 'Test',
+      apellido: 'US15',
+      especialidad: 'CLINICA_MEDICA',
+      matricula: MATRICULA_TEST,
+      email: EMAIL_MEDICO_TEST,
+    },
+    update: {},
+  })
+  await prisma.paciente.upsert({
+    where: { idPaciente: ID_PACIENTE_TEST },
+    create: { idPaciente: ID_PACIENTE_TEST, nombre: 'Paciente', apellido: 'US15', dni: DNI_PACIENTE_TEST, email: EMAIL_PACIENTE_TEST },
+    update: {},
+  })
+  await prisma.paciente.upsert({
+    where: { idPaciente: ID_PACIENTE_FALLO_TEST },
+    create: {
+      idPaciente: ID_PACIENTE_FALLO_TEST,
+      nombre: 'Paciente',
+      apellido: 'ConEmailInvalido',
+      dni: DNI_PACIENTE_FALLO_TEST,
+      email: EMAIL_PACIENTE_INVALIDO,
+    },
+    update: {},
+  })
+
+  const mesVigencia = new Date(`${FECHA_TURNO_OK.slice(0, 7)}-01T00:00:00.000Z`)
+  const disponibilidad = await prisma.disponibilidadMedica.create({
+    data: { idMedico: ID_MEDICO_TEST, mesVigencia, diaSemana: 1, horaDesde: '08:00', horaHasta: '12:00', duracionTurnoMinutos: 30 },
+  })
+
+  const turno = await prisma.turno.create({
+    data: {
+      idMedico: ID_MEDICO_TEST,
+      idPaciente: ID_PACIENTE_TEST,
+      idDisponibilidadMedica: disponibilidad.idDisponibilidadMedica,
+      fecha: new Date(`${FECHA_TURNO_OK}T00:00:00.000Z`),
+      hora: HORA_TURNO,
+      duracionMinutos: 30,
+      estado: 'CONFIRMADO',
+    },
+  })
+  idTurnoTest = turno.idTurno
+
+  const turnoFallo = await prisma.turno.create({
+    data: {
+      idMedico: ID_MEDICO_TEST,
+      idPaciente: ID_PACIENTE_FALLO_TEST,
+      idDisponibilidadMedica: disponibilidad.idDisponibilidadMedica,
+      fecha: new Date(`${FECHA_TURNO_FALLO}T00:00:00.000Z`),
+      hora: HORA_TURNO,
+      duracionMinutos: 30,
+      estado: 'CONFIRMADO',
+    },
+  })
+  idTurnoFalloTest = turnoFallo.idTurno
 }
 
 async function runAllTests() {
@@ -368,10 +470,111 @@ async function runAllTests() {
     assert.equal(nuevoCiclo.estado, 'PENDIENTE')
   })
 
-  console.log('\n=== TODAS LAS PRUEBAS DE US-15 PASARON EXITOSAMENTE (15/15) ===\n')
+  // --------------------------------------------------------------------------
+  // Grupo 6: Integración real contra la base de datos (Postgres/Neon)
+  // A diferencia de los grupos anteriores, esto llama a RecordatoriosService
+  // de verdad (no simula transiciones con variables locales) y después
+  // vuelve a consultar con Prisma directo para verificar lo persistido.
+  // --------------------------------------------------------------------------
+  await limpiarDatosDeTest() // por si quedó algo de una corrida anterior interrumpida
+  await setupDatosDeTest()
+
+  try {
+    await test('RF-15.1: programarRecordatorio crea el registro en BD con estado PENDIENTE', async () => {
+      const resultado = await RecordatoriosService.programarRecordatorio({
+        idTurno: idTurnoTest,
+        idPaciente: ID_PACIENTE_TEST,
+        fechaTurno: FECHA_TURNO_OK,
+        horaTurno: HORA_TURNO,
+      })
+      assert.equal(resultado.programado, true)
+      assert.ok(resultado.recordatorio)
+      idRecordatorioTest = resultado.recordatorio!.idRecordatorio
+
+      const filaReal = await prisma.recordatorioTurno.findUnique({ where: { idRecordatorio: idRecordatorioTest } })
+      assert.ok(filaReal, 'El recordatorio debe existir en la base de datos')
+      assert.equal(filaReal!.estado, 'PENDIENTE')
+      assert.equal(filaReal!.idTurno, idTurnoTest)
+      assert.equal(filaReal!.ciclo, 1)
+    })
+
+    await test('RF-15.1: programarRecordatorio es idempotente si ya existe un recordatorio activo para el turno', async () => {
+      const resultado = await RecordatoriosService.programarRecordatorio({
+        idTurno: idTurnoTest,
+        idPaciente: ID_PACIENTE_TEST,
+        fechaTurno: FECHA_TURNO_OK,
+        horaTurno: HORA_TURNO,
+      })
+      assert.equal(resultado.programado, false)
+      assert.equal(resultado.recordatorio?.idRecordatorio, idRecordatorioTest)
+
+      const totalEnBD = await prisma.recordatorioTurno.count({ where: { idTurno: idTurnoTest } })
+      assert.equal(totalEnBD, 1, 'No debe crear un segundo registro duplicado en BD')
+    })
+
+    await test('RF-15.3 / RF-15.4: procesarLoteRecordatorios envía el recordatorio real y queda reflejado en BD', async () => {
+      const resultado = await RecordatoriosService.procesarLoteRecordatorios({ forzarIdTurno: idTurnoTest })
+      assert.equal(resultado.totalProcesados, 1)
+      assert.equal(resultado.enviados, 1)
+
+      const filaReal = await prisma.recordatorioTurno.findUnique({ where: { idRecordatorio: idRecordatorioTest } })
+      assert.equal(filaReal!.estado, 'ENVIADO')
+      assert.ok(filaReal!.enviadoAt, 'Debe registrar el momento de envío')
+      assert.equal(filaReal!.intentos, 1)
+
+      const turnoReal = await prisma.turno.findUnique({ where: { idTurno: idTurnoTest } })
+      assert.ok(turnoReal!.recordatorioEnviadoAt, 'El turno debe quedar marcado con recordatorioEnviadoAt')
+    })
+
+    await test('RF-15.4 / Tolerancia a fallos: email inválido persiste el recordatorio como FALLIDO en BD', async () => {
+      const programado = await RecordatoriosService.programarRecordatorio({
+        idTurno: idTurnoFalloTest,
+        idPaciente: ID_PACIENTE_FALLO_TEST,
+        fechaTurno: FECHA_TURNO_FALLO,
+        horaTurno: HORA_TURNO,
+      })
+      assert.equal(programado.programado, true)
+      idRecordatorioFalloTest = programado.recordatorio!.idRecordatorio
+
+      const resultado = await RecordatoriosService.procesarLoteRecordatorios({ forzarIdTurno: idTurnoFalloTest })
+      assert.equal(resultado.fallidos, 1)
+      assert.equal(resultado.enviados, 0)
+
+      const filaReal = await prisma.recordatorioTurno.findUnique({ where: { idRecordatorio: idRecordatorioFalloTest } })
+      assert.equal(filaReal!.estado, 'FALLIDO')
+      assert.ok(filaReal!.ultimoError?.includes('inválida'), 'Debe registrar el motivo del fallo permanente')
+    })
+
+    await test('RF-15.5: reprogramarRecordatorio tras un envío ya ENVIADO crea un nuevo ciclo real en BD', async () => {
+      const resultado = await RecordatoriosService.reprogramarRecordatorio(idTurnoTest, fechaFutura(20), '11:00')
+      assert.ok(resultado)
+      assert.equal(resultado!.estado, 'PENDIENTE')
+      assert.equal(resultado!.ciclo, 2)
+
+      const filasEnBD = await prisma.recordatorioTurno.findMany({ where: { idTurno: idTurnoTest }, orderBy: { ciclo: 'asc' } })
+      assert.equal(filasEnBD.length, 2, 'Debe conservar el ciclo 1 (ENVIADO) y crear el ciclo 2 (PENDIENTE)')
+      assert.equal(filasEnBD[0].estado, 'ENVIADO')
+      assert.equal(filasEnBD[1].estado, 'PENDIENTE')
+      assert.equal(filasEnBD[1].ciclo, 2)
+    })
+
+    await test('RF-15.5: cancelarRecordatoriosTurno cancela solo los recordatorios activos, no los ya ENVIADO', async () => {
+      await RecordatoriosService.cancelarRecordatoriosTurno(idTurnoTest, 'Turno cancelado por el paciente')
+
+      const filasEnBD = await prisma.recordatorioTurno.findMany({ where: { idTurno: idTurnoTest }, orderBy: { ciclo: 'asc' } })
+      assert.equal(filasEnBD.length, 2)
+      assert.equal(filasEnBD[0].estado, 'ENVIADO', 'El ciclo ya enviado no debe modificarse')
+      assert.equal(filasEnBD[1].estado, 'CANCELADO', 'El ciclo activo (PENDIENTE) debe quedar CANCELADO')
+    })
+  } finally {
+    await limpiarDatosDeTest()
+    await prisma.$disconnect()
+  }
+
+  console.log('\n=== TODAS LAS PRUEBAS DE US-15 PASARON EXITOSAMENTE (21/21) ===\n')
 }
 
 runAllTests().catch((error) => {
   console.error('\n❌ Error en las pruebas de US-15:', error)
-  process.exit(1)
+  prisma.$disconnect().finally(() => process.exit(1))
 })
