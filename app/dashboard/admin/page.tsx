@@ -1,6 +1,7 @@
 import { UserButton } from '@clerk/nextjs'
 import RegistroProfesional from './RegistroProfesional'
 import SeccionesAdmin from './SeccionesAdmin'
+import GestionTurnosAdmin from './GestionTurnosAdmin'
 import { getCurrentUser } from '@/lib/auth'
 
 export default async function AdminDashboardPage() {
@@ -29,6 +30,7 @@ export default async function AdminDashboardPage() {
         </header>
 
         <SeccionesAdmin
+          turnos={<GestionTurnosAdmin />}
           profesionales={<RegistroProfesional />}
           resumen={
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

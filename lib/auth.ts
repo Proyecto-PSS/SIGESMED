@@ -271,3 +271,11 @@ export async function getCurrentPatient() {
   if (!paciente) throw errorConEstado('No se encontró un paciente asociado a la sesión actual.', 404)
   return paciente
 }
+
+/** Obtiene y valida el usuario autenticado con rol de administrador. */
+export async function getCurrentAdminUser(): Promise<SessionUser> {
+  const user = await getCurrentUser()
+  if (!user) throw errorConEstado('No autorizado: sesión no encontrada o perfil inexistente.', 401)
+  if (user.rol !== 'ADMIN') throw errorConEstado('Acceso denegado: se requieren permisos de administrador.', 403)
+  return user
+}
