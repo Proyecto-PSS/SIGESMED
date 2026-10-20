@@ -1,5 +1,3 @@
-// Servicio de notificaciones por correo electrónico de SIGESMED (US-15 y US-07).
-
 export interface DatosRecordatorioEmail {
   email: string
   pacienteNombre: string
@@ -9,6 +7,15 @@ export interface DatosRecordatorioEmail {
   hora: string
   consultorio?: string | null
   direccion?: string | null
+}
+
+export interface DatosAvisoCancelacionEmail {
+  email: string
+  pacienteNombre: string
+  medicoNombre: string
+  especialidad?: string | null
+  fecha: string
+  hora: string
 }
 
 export interface ResultadoEnvioEmail {
@@ -170,6 +177,118 @@ function escapeHtml(str: string): string {
     .replace(/'/g, '&#39;')
 }
 
+export function construirPlantillaAvisoCancelacion(datos: DatosAvisoCancelacionEmail): {
+  asunto: string
+  html: string
+  textoPlano: string
+} {
+  const asunto = 'Importante: cancelación de su turno médico - SIGESMED'
+  const especialidadTexto = formatearEspecialidad(datos.especialidad)
+
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${asunto}</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; color: #1e293b;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; padding: 24px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" style="max-width: 580px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08); border: 1px solid #e2e8f0;">
+          <!-- Header -->
+          <tr>
+            <td style="background-color: #dc2626; padding: 24px; text-align: center;">
+              <h1 style="margin: 0; font-size: 20px; font-weight: 700; color: #ffffff; letter-spacing: 0.5px;">SIGESMED</h1>
+              <p style="margin: 6px 0 0; font-size: 14px; color: #fee2e2;">Aviso Oficial de Cancelación de Turno</p>
+            </td>
+          </tr>
+          <!-- Body -->
+          <tr>
+            <td style="padding: 28px 24px;">
+              <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.5; color: #0f172a;">
+                Estimado/a <strong>${escapeHtml(datos.pacienteNombre)}</strong>,
+              </p>
+              <p style="margin: 0 0 20px; font-size: 15px; line-height: 1.6; color: #334155;">
+                Le informamos que su turno médico ha debido ser cancelado debido a modificaciones en los días y horarios de atención del profesional.
+              </p>
+
+              <table role="presentation" width="100%" style="border-collapse: collapse; margin-bottom: 24px; background-color: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; padding: 16px;">
+                <tr>
+                  <td style="padding: 8px 12px; color: #64748b; font-weight: 500; font-size: 14px;">Profesional:</td>
+                  <td style="padding: 8px 12px; color: #0f172a; font-weight: 600; font-size: 14px; text-align: right;">Dr./Dra. ${escapeHtml(datos.medicoNombre)}</td>
+                </tr>
+                ${especialidadTexto ? `<tr>
+                  <td style="padding: 8px 12px; color: #64748b; font-weight: 500; font-size: 14px;">Especialidad:</td>
+                  <td style="padding: 8px 12px; color: #0f172a; font-weight: 600; font-size: 14px; text-align: right;">${escapeHtml(especialidadTexto)}</td>
+                </tr>` : ''}
+                <tr>
+                  <td style="padding: 8px 12px; color: #64748b; font-weight: 500; font-size: 14px;">Fecha original:</td>
+                  <td style="padding: 8px 12px; color: #0f172a; font-weight: 600; font-size: 14px; text-align: right;">${escapeHtml(datos.fecha)}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 12px; color: #64748b; font-weight: 500; font-size: 14px;">Horario original:</td>
+                  <td style="padding: 8px 12px; color: #0f172a; font-weight: 600; font-size: 14px; text-align: right;">${escapeHtml(datos.hora)} hs</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 12px; color: #64748b; font-weight: 500; font-size: 14px;">Motivo:</td>
+                  <td style="padding: 8px 12px; color: #b91c1c; font-weight: 600; font-size: 14px; text-align: right;">Modificación de agenda médica</td>
+                </tr>
+              </table>
+
+              <p style="margin: 0 0 16px; font-size: 14px; line-height: 1.6; color: #475569;">
+                Lamentamos sinceramente los inconvenientes que esta situación pueda ocasionarle en su organización personal.
+              </p>
+              <p style="margin: 0 0 24px; font-size: 14px; line-height: 1.6; color: #475569;">
+                Para coordinar una nueva atención, le solicitamos ingresar nuevamente al sistema SIGESMED para consultar los turnos disponibles y seleccionar la fecha y horario que mejor se adapte a sus necesidades.
+              </p>
+
+              <div style="text-align: center; margin: 28px 0 12px;">
+                <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://sigesmed.com'}/dashboard/paciente/reservar-turno" 
+                   style="background-color: #0284c7; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; display: inline-block;">
+                  Consultar nuevos turnos disponibles
+                </a>
+              </div>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f1f5f9; padding: 16px 24px; text-align: center; border-top: 1px solid #e2e8f0;">
+              <p style="margin: 0; font-size: 12px; color: #64748b;">
+                Este es un mensaje institucional automático del Sistema de Gestión Médica (SIGESMED). Por favor no responda a este correo.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`
+
+  const textoPlano = `Importante: cancelación de su turno médico - SIGESMED
+
+Estimado/a ${datos.pacienteNombre},
+
+Le informamos que su turno médico ha debido ser cancelado debido a modificaciones en los días y horarios de atención del profesional.
+
+Datos del turno cancelado:
+- Profesional: Dr./Dra. ${datos.medicoNombre}${especialidadTexto ? `\n- Especialidad: ${especialidadTexto}` : ''}
+- Fecha original: ${datos.fecha}
+- Horario original: ${datos.hora} hs
+- Motivo: Modificación de agenda médica
+
+Lamentamos sinceramente los inconvenientes ocasionados.
+
+Para coordinar una nueva cita, le solicitamos ingresar a SIGESMED para consultar la disponibilidad y reservar un nuevo turno que resulte de su conveniencia.
+
+Atentamente,
+Equipo de Administración de SIGESMED`
+
+  return { asunto, html, textoPlano }
+}
+
 export class EmailService {
   /**
    * Envía un recordatorio de turno médico al correo registrado del paciente.
@@ -254,6 +373,101 @@ export class EmailService {
       return {
         ok: true,
         messageId: `sim_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        esErrorTransitorio: false,
+      }
+    } catch (error) {
+      const err = error as Error
+      const esTransitorio =
+        err.name === 'AbortError' ||
+        err.message.includes('fetch') ||
+        err.message.includes('network') ||
+        err.message.includes('timeout') ||
+        err.message.includes('ECONNRESET') ||
+        err.message.includes('ETIMEDOUT')
+
+      return {
+        ok: false,
+        error: err.message || 'Fallo de comunicación con el proveedor de correo',
+        esErrorTransitorio: esTransitorio,
+      }
+    }
+  }
+
+  /**
+   * Envía el aviso formal de cancelación administrativa de un turno al correo del paciente (US-22).
+   */
+  static async enviarAvisoCancelacionAdministrativa(
+    datos: DatosAvisoCancelacionEmail
+  ): Promise<ResultadoEnvioEmail> {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!datos.email || !emailRegex.test(datos.email.trim())) {
+      return {
+        ok: false,
+        error: 'Dirección de correo electrónico inválida o ausente',
+        esErrorTransitorio: false,
+      }
+    }
+
+    const { asunto, html, textoPlano } = construirPlantillaAvisoCancelacion(datos)
+
+    try {
+      const apiKey = process.env.RESEND_API_KEY
+      if (apiKey) {
+        const response = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: process.env.EMAIL_FROM || 'SIGESMED <turnos@sigesmed.com>',
+            to: [datos.email.trim()],
+            subject: asunto,
+            html,
+            text: textoPlano,
+          }),
+        })
+
+        if (!response.ok) {
+          const status = response.status
+          const esTransitorio = status === 429 || status >= 500
+          let errorDetalle = `Error HTTP ${status} del proveedor de correo`
+          try {
+            const errorJson = await response.json()
+            if (errorJson?.message) errorDetalle = `${errorDetalle}: ${errorJson.message}`
+          } catch {
+            // Ignorar fallo de parseo
+          }
+
+          return {
+            ok: false,
+            error: errorDetalle,
+            esErrorTransitorio: esTransitorio,
+          }
+        }
+
+        const data = await response.json()
+        return {
+          ok: true,
+          messageId: data?.id ?? `resend_${Date.now()}`,
+          esErrorTransitorio: false,
+        }
+      }
+
+      // Modo desarrollo / simulación
+      await new Promise((resolve) => setTimeout(resolve, 60))
+      const partes = datos.email.split('@')
+      const emailAnonimo = partes[0].length > 2
+        ? `${partes[0].slice(0, 2)}***@${partes[1] || ''}`
+        : `***@${partes[1] || ''}`
+
+      console.log(
+        `[EMAIL-SERVICE] Aviso de cancelación emitido exitosamente a ${emailAnonimo} para turno del ${datos.fecha} ${datos.hora}`
+      )
+
+      return {
+        ok: true,
+        messageId: `sim_cancel_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
         esErrorTransitorio: false,
       }
     } catch (error) {

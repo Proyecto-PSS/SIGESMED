@@ -106,31 +106,42 @@ model DisponibilidadMedica {
   @@map("disponibilidades_medicas")
 }
 
-model Turno {
-  idTurno                String       @id @default(cuid()) @map("id_turno")
-  idMedico               String       @map("id_medico")
-  idPaciente             String?      @map("id_paciente")
-  idDisponibilidadMedica String       @map("id_disponibilidad_medica")
-  fecha                  DateTime     @db.Date
-  hora                   String       @db.VarChar(5)
-  duracionMinutos        Int          @map("duracion_minutos") @db.SmallInt
-  estado                 EstadoTurno  @default(DISPONIBLE)
-  modalidad              ModalidadTurno?
-  motivoCancelacion      String?      @map("motivo_cancelacion")
-  confirmacionEnviadaAt  DateTime?    @map("confirmacion_enviada_at") @db.Timestamptz(3)
-  recordatorioEnviadoAt  DateTime?    @map("recordatorio_enviado_at") @db.Timestamptz(3)
-  createdAt              DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
-  idempotencyKey         String?      @unique @map("idempotency_key")
+enum EstadoNotificacionCancelacion {
+  PENDIENTE
+  PROCESANDO
+  ENVIADA
+  FALLIDA
+}
 
-  medico        Medico               @relation(fields: [idMedico], references: [idMedico], onDelete: Restrict)
-  paciente      Paciente?            @relation(fields: [idPaciente], references: [idPaciente], onDelete: SetNull)
+model Turno {
+  idTurno                            String                         @id @default(cuid()) @map("id_turno")
+  idMedico                           String                         @map("id_medico")
+  idPaciente                         String?                        @map("id_paciente")
+  idDisponibilidadMedica             String                         @map("id_disponibilidad_medica")
+  fecha                              DateTime                       @db.Date
+  hora                               String                         @db.VarChar(5)
+  duracionMinutos                    Int                            @map("duracion_minutos") @db.SmallInt
+  estado                             EstadoTurno                    @default(DISPONIBLE)
+  modalidad                          ModalidadTurno?
+  motivoCancelacion                  String?                        @map("motivo_cancelacion")
+  estadoNotificacionCancelacion      EstadoNotificacionCancelacion? @map("estado_notificacion_cancelacion")
+  notificacionCancelacionIntentadaAt DateTime?                      @map("notificacion_cancelacion_intentada_at") @db.Timestamptz(3)
+  notificacionCancelacionEnviadaAt   DateTime?                      @map("notificacion_cancelacion_enviada_at") @db.Timestamptz(3)
+  confirmacionEnviadaAt              DateTime?                      @map("confirmacion_enviada_at") @db.Timestamptz(3)
+  recordatorioEnviadoAt              DateTime?                      @map("recordatorio_enviado_at") @db.Timestamptz(3)
+  createdAt                          DateTime                       @default(now()) @map("created_at") @db.Timestamptz(3)
+  idempotencyKey                     String?                        @unique @map("idempotency_key")
+
+  medico         Medico               @relation(fields: [idMedico], references: [idMedico], onDelete: Restrict)
+  paciente       Paciente?            @relation(fields: [idPaciente], references: [idPaciente], onDelete: SetNull)
   disponibilidad DisponibilidadMedica @relation(fields: [idDisponibilidadMedica], references: [idDisponibilidadMedica], onDelete: Restrict)
-  recordatorios RecordatorioTurno[]
+  recordatorios  RecordatorioTurno[]
 
   @@unique([idMedico, fecha, hora])
   @@index([idMedico, fecha])
   @@index([estado, fecha])
   @@index([idDisponibilidadMedica, fecha])
+  @@index([estadoNotificacionCancelacion])
   @@map("turnos")
 }
 
