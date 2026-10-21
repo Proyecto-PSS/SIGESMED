@@ -60,20 +60,11 @@ export default async function MisCitasPage() {
         </div>
 
         {/* Pestañas */}
-        <div className="mt-6 flex gap-8 border-b border-slate-300">
-          <button
-            type="button"
-            className="border-b-2 border-black px-0 pb-3 text-sm font-semibold"
-          >
+        <div className="mt-6 border-b border-slate-300">
+          <h2 className="border-b-2 border-black px-0 pb-3 text-sm font-semibold">
             Próximos Turnos ({citasFormateadas.length})
-          </button>
+          </h2>
 
-          <button
-            type="button"
-            className="pb-3 text-sm text-slate-600"
-          >
-            Historial
-          </button>
         </div>
 
         <MisCitas citas={citasFormateadas} />

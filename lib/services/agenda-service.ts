@@ -219,7 +219,11 @@ export class AgendaService {
 
         const fechaAStringLocal = (d: Date) => d.toISOString().slice(0, 10)
         const setProyectados = new Set(turnosProyectados.map(t => `${fechaAStringLocal(t.fecha)}_${t.hora}`))
-        const setExistentes = new Set(turnosExistentes.map(t => `${fechaAStringLocal(t.fecha)}_${t.hora}`))
+        const setExistentes = new Set(
+          turnosExistentes
+            .filter((t) => t.estado === 'DISPONIBLE' || t.estado === 'CONFIRMADO')
+            .map(t => `${fechaAStringLocal(t.fecha)}_${t.hora}`)
+        )
 
         const turnosARemover = turnosExistentes.filter(t => !setProyectados.has(`${fechaAStringLocal(t.fecha)}_${t.hora}`))
         const turnosAAgregar = turnosProyectados.filter(t => !setExistentes.has(`${fechaAStringLocal(t.fecha)}_${t.hora}`))
@@ -238,7 +242,9 @@ export class AgendaService {
           }
         }
 
-        for (const t of turnosARemover) validar48hs(t.fecha, t.hora)
+        for (const t of turnosARemover.filter((turno) => turno.estado !== 'CANCELADO' && turno.estado !== 'ATENDIDO')) {
+          validar48hs(t.fecha, t.hora)
+        }
         for (const t of turnosAAgregar) validar48hs(t.fecha, t.hora)
 
         // Aplicar cambios a turnos existentes (RF-06)
@@ -363,7 +369,28 @@ export class AgendaService {
         }
       }
 
-      await tx.turno.deleteMany({ where: { idDisponibilidadMedica: id } })
+      const idsTurnosCancelados = turnosConfirmados.map((turno) => turno.idTurno)
+      if (idsTurnosCancelados.length > 0) {
+        await tx.turno.updateMany({
+          where: { idTurno: { in: idsTurnosCancelados }, estado: 'CONFIRMADO' },
+          data: {
+            estado: 'CANCELADO',
+            motivoCancelacion: 'Baja de horario de atención',
+          },
+        })
+        await tx.recordatorioTurno.updateMany({
+          where: {
+            idTurno: { in: idsTurnosCancelados },
+            estado: { in: ['PENDIENTE', 'REINTENTO_PROGRAMADO', 'PROCESANDO'] },
+          },
+          data: {
+            estado: 'CANCELADO',
+            ultimoError: 'Baja de horario de atención',
+          },
+        })
+      }
+
+      await tx.turno.deleteMany({ where: { idDisponibilidadMedica: id, estado: 'DISPONIBLE' } })
       await tx.disponibilidadMedica.deleteMany({ where: { idDisponibilidadMedica: id } })
     })
 

@@ -21,6 +21,22 @@ export async function obtenerCitasPaciente(idPaciente: string) {
   })
 }
 
+export async function obtenerHistorialTurnosPaciente(idPaciente: string) {
+  return prisma.turno.findMany({
+    where: { idPaciente },
+    include: {
+      medico: {
+        select: {
+          nombre: true,
+          apellido: true,
+          especialidad: true,
+        },
+      },
+    },
+    orderBy: [{ fecha: 'desc' }, { hora: 'desc' }],
+  })
+}
+
 function obtenerFechaTurno(fecha: Date, hora: string) {
   const fechaTexto = fecha.toISOString().slice(0, 10)
 
@@ -65,7 +81,8 @@ export async function cancelarCitaPaciente(
     }
 
     if (
-      turnoExistente.estado === 'DISPONIBLE' &&
+      turnoExistente.idPaciente === idPaciente &&
+      turnoExistente.estado === 'CANCELADO' &&
       turnoExistente.motivoCancelacion === 'Cancelado por el paciente'
     ) {
       return turnoExistente
@@ -99,22 +116,40 @@ export async function cancelarCitaPaciente(
     throw error
   }
 
-  const actualizado = await prisma.turno.updateMany({
-    where: {
-      idTurno,
-      idPaciente,
-      estado: 'CONFIRMADO',
-    },
-    data: {
-      idPaciente: null,
-      estado: 'DISPONIBLE',
-      modalidad: null,
-      motivoCancelacion: 'Cancelado por el paciente',
-      idempotencyKey: null,
-    },
+  const turnoCancelado = await prisma.$transaction(async (tx) => {
+    const actualizado = await tx.turno.updateMany({
+      where: {
+        idTurno,
+        idPaciente,
+        estado: 'CONFIRMADO',
+      },
+      data: {
+        estado: 'CANCELADO',
+        motivoCancelacion: 'Cancelado por el paciente',
+        idempotencyKey: null,
+      },
+    })
+
+    if (actualizado.count !== 1) {
+      return null
+    }
+
+    // El turno cancelado queda como historial; una fila nueva libera el horario.
+    await tx.turno.create({
+      data: {
+        idMedico: turno.idMedico,
+        idDisponibilidadMedica: turno.idDisponibilidadMedica,
+        fecha: turno.fecha,
+        hora: turno.hora,
+        duracionMinutos: turno.duracionMinutos,
+        estado: 'DISPONIBLE',
+      },
+    })
+
+    return tx.turno.findUniqueOrThrow({ where: { idTurno } })
   })
 
-  if (actualizado.count === 1) {
+  if (turnoCancelado) {
     // US-15: Cancelar recordatorios pendientes asociados al turno cancelado
     try {
       await RecordatoriosService.cancelarRecordatoriosTurno(
@@ -129,14 +164,15 @@ export async function cancelarCitaPaciente(
     }
   }
 
-  if (actualizado.count !== 1) {
+  if (!turnoCancelado) {
     const turnoRevisado = await prisma.turno.findUnique({
       where: { idTurno },
     })
 
     if (
       turnoRevisado &&
-      turnoRevisado.estado === 'DISPONIBLE' &&
+      turnoRevisado.idPaciente === idPaciente &&
+      turnoRevisado.estado === 'CANCELADO' &&
       turnoRevisado.motivoCancelacion === 'Cancelado por el paciente'
     ) {
       return turnoRevisado
@@ -149,9 +185,5 @@ export async function cancelarCitaPaciente(
     throw error
   }
 
-  return prisma.turno.findUniqueOrThrow({
-    where: {
-      idTurno,
-    },
-  })
+  return turnoCancelado
 }
