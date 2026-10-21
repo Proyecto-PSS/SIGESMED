@@ -153,6 +153,8 @@ model Turno {
   pagos          PagoTurno[]
 
   @@index([idMedico, fecha])
+  @@index([idPaciente, fecha, hora])
+  @@index([idPaciente, estado, fecha, hora])
   @@index([estado, fecha])
   @@index([idDisponibilidadMedica, fecha])
   @@index([estadoNotificacionCancelacion])
