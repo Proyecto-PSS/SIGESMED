@@ -198,6 +198,13 @@ export default function ConfirmarReserva({ idTurno, idMedico }: Props) {
         </div>
 
         <Link
+          href={`/dashboard/paciente/pagos/${idTurno}`}
+          className="block bg-emerald-700 px-4 py-3 text-center text-xs font-semibold uppercase text-white hover:bg-emerald-800"
+        >
+          Abonar consulta en línea
+        </Link>
+
+        <Link
           href="/dashboard/paciente/mis-citas"
           className="block bg-black px-4 py-3 text-center text-xs font-semibold uppercase text-white hover:bg-slate-800"
         >

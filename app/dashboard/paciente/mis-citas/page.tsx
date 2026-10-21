@@ -8,12 +8,19 @@ export default async function MisCitasPage() {
   const paciente = await getCurrentPatient()
   const citas = await obtenerCitasPaciente(paciente.idPaciente)
 
-  const citasFormateadas = citas.map((cita) => ({
+  const citasFormateadas = citas.map((cita: any) => ({
     idTurno: cita.idTurno,
     fecha: cita.fecha.toISOString(),
     hora: cita.hora,
     duracionMinutos: cita.duracionMinutos,
     estado: cita.estado,
+    modalidad: cita.modalidad ?? 'PARTICULAR',
+    pagos: cita.pagos?.map((p: any) => ({
+      idPago: p.idPago,
+      estado: p.estado,
+      monto: p.monto.toString(),
+      moneda: p.moneda,
+    })) ?? [],
     medico: {
       nombre: cita.medico.nombre,
       apellido: cita.medico.apellido,
