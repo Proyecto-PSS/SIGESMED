@@ -48,6 +48,19 @@ enum TipoMovimientoStock {
   LIBERACION
 }
 
+enum EstadoPago {
+  PENDIENTE
+  PROCESANDO
+  APROBADO
+  RECHAZADO
+  ERROR
+}
+
+enum ProveedorPago {
+  SIMULADA
+  MERCADOPAGO
+}
+
 model Medico {
   idMedico     String             @id @map("id_medico")
   nombre       String
@@ -82,6 +95,7 @@ model Paciente {
   turnos            Turno[]
   turnosVacunacion  TurnoVacunacion[]
   recordatorios     RecordatorioTurno[]
+  pagos             PagoTurno[]
 
   @@map("pacientes")
 }
@@ -136,6 +150,7 @@ model Turno {
   paciente       Paciente?            @relation(fields: [idPaciente], references: [idPaciente], onDelete: SetNull)
   disponibilidad DisponibilidadMedica @relation(fields: [idDisponibilidadMedica], references: [idDisponibilidadMedica], onDelete: Restrict)
   recordatorios  RecordatorioTurno[]
+  pagos          PagoTurno[]
 
   @@unique([idMedico, fecha, hora])
   @@index([idMedico, fecha])
@@ -258,4 +273,29 @@ model RecordatorioTurno {
   @@index([idPaciente])
   @@map("recordatorios_turnos")
 }
+
+model PagoTurno {
+  idPago               String        @id @default(cuid()) @map("id_pago")
+  idTurno              String        @map("id_turno")
+  idPaciente           String        @map("id_paciente")
+  monto                Decimal       @db.Decimal(10, 2)
+  moneda               String        @default("ARS") @db.VarChar(3)
+  estado               EstadoPago    @default(PENDIENTE)
+  proveedor            ProveedorPago @default(SIMULADA)
+  transaccionExternaId String?       @map("transaccion_externa_id")
+  idempotencyKey       String        @unique @map("idempotency_key")
+  motivoRechazo        String?       @map("motivo_rechazo")
+  codigoError          String?       @map("codigo_error")
+  aprobadoAt           DateTime?     @map("aprobado_at") @db.Timestamptz(3)
+  createdAt            DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  turno    Turno    @relation(fields: [idTurno], references: [idTurno], onDelete: Restrict)
+  paciente Paciente @relation(fields: [idPaciente], references: [idPaciente], onDelete: Restrict)
+
+  @@index([idTurno, estado])
+  @@index([idPaciente])
+  @@map("pagos_turnos")
+}
+
 

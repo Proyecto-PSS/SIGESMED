@@ -9,6 +9,10 @@ export async function obtenerCitasPaciente(idPaciente: string) {
     },
     include: {
       medico: true,
+      pagos: {
+        orderBy: { createdAt: 'desc' },
+        take: 1,
+      },
     },
     orderBy: [
       { fecha: 'asc' },

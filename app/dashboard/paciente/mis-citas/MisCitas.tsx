@@ -10,6 +10,13 @@ type Cita = {
   hora: string
   duracionMinutos: number
   estado: string
+  modalidad?: string | null
+  pagos?: Array<{
+    idPago: string
+    estado: string
+    monto: any
+    moneda: string
+  }>
   medico: {
     nombre: string
     apellido: string
@@ -232,6 +239,7 @@ export default function MisCitas({ citas }: Props) {
           {citasActuales.map((cita) => {
             const cancelable = puedeCancelar(cita)
             const mostrandoConfirmacion = citaSeleccionada === cita.idTurno
+            const esParticular = cita.modalidad !== 'COBERTURA'
 
             return (
               <div key={cita.idTurno} className="space-y-3">
@@ -261,6 +269,22 @@ export default function MisCitas({ citas }: Props) {
                         <span className="border border-slate-300 px-2 py-0.5 text-[10px] uppercase tracking-wide">
                           Programado
                         </span>
+
+                        {esParticular ? (
+                          cita.pagos?.[0]?.estado === 'APROBADO' ? (
+                            <span className="border border-emerald-400 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800">
+                              ✓ Pago Aprobado
+                            </span>
+                          ) : (
+                            <span className="border border-amber-400 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800">
+                              ⚠ Pago Pendiente
+                            </span>
+                          )
+                        ) : (
+                          <span className="border border-slate-300 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+                            Cobertura Médica
+                          </span>
+                        )}
                       </div>
 
                       <h2 className="mt-2 text-base font-bold">
@@ -281,8 +305,17 @@ export default function MisCitas({ citas }: Props) {
                       </p>
                     </div>
 
-                    {/* Cancelación */}
-                    <div className="shrink-0">
+                    {/* Acciones: Pago y Cancelación */}
+                    <div className="shrink-0 flex items-center gap-2">
+                      {esParticular && cita.pagos?.[0]?.estado !== 'APROBADO' && (
+                        <a
+                          href={`/dashboard/paciente/pagos/${cita.idTurno}`}
+                          className="border border-emerald-400 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 hover:border-emerald-500 transition-colors"
+                        >
+                          Abonar consulta
+                        </a>
+                      )}
+
                       {cancelable ? (
                         <button
                           type="button"
