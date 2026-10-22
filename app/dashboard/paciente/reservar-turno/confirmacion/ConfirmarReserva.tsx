@@ -9,6 +9,7 @@ import { esperar, fetchConTimeout } from '@/lib/utils/resilient-fetch'
 type Props = {
   idTurno: string
   idMedico: string
+  modalidad: 'PARTICULAR' | 'COBERTURA'
 }
 
 type EstadoReserva =
@@ -21,7 +22,7 @@ type EstadoReserva =
   | 'conflicto'
   | 'error'
 
-export default function ConfirmarReserva({ idTurno, idMedico }: Props) {
+export default function ConfirmarReserva({ idTurno, idMedico, modalidad }: Props) {
   const [estado, setEstado] = useState<EstadoReserva>('inicial')
   const [mensaje, setMensaje] = useState('')
 
@@ -133,7 +134,7 @@ export default function ConfirmarReserva({ idTurno, idMedico }: Props) {
             },
             body: JSON.stringify({
               idempotencyKey,
-              modalidad: 'PARTICULAR',
+              modalidad,
             }),
           },
           RESERVA_CONFIG.REQUEST_TIMEOUT_MS
@@ -197,12 +198,18 @@ export default function ConfirmarReserva({ idTurno, idMedico }: Props) {
           <p>Turno confirmado correctamente. Se registró la reserva a nombre del paciente.</p>
         </div>
 
-        <Link
-          href={`/dashboard/paciente/pagos/${idTurno}`}
-          className="block bg-emerald-700 px-4 py-3 text-center text-xs font-semibold uppercase text-white hover:bg-emerald-800"
-        >
-          Abonar consulta en línea
-        </Link>
+        {modalidad === 'PARTICULAR' ? (
+          <Link
+            href={`/dashboard/paciente/pagos/${idTurno}`}
+            className="block bg-emerald-700 px-4 py-3 text-center text-xs font-semibold uppercase text-white hover:bg-emerald-800"
+          >
+            Continuar a pagos
+          </Link>
+        ) : (
+          <div className="border border-slate-200 bg-slate-50 p-4 text-center text-xs text-slate-700">
+            La cobertura médica quedó asociada a este turno.
+          </div>
+        )}
 
         <Link
           href="/dashboard/paciente/mis-citas"
