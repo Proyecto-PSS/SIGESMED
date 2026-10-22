@@ -4,6 +4,7 @@ import {
   DiaSemana,
   DuracionTurno,
   DisponibilidadMedica,
+  EstadoTurno,
   Turno,
   ResumenPublicacion,
 } from '../types/agenda'
@@ -76,7 +77,7 @@ function mapTurno(row: {
   fecha: Date
   hora: string
   duracionMinutos: number
-  estado: 'DISPONIBLE' | 'CONFIRMADO' | 'CANCELADO' | 'ATENDIDO'
+  estado: EstadoTurno
   modalidad: 'PARTICULAR' | 'COBERTURA' | null
   motivoCancelacion: string | null
   createdAt: Date

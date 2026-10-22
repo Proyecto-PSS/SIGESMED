@@ -18,6 +18,7 @@ enum EstadoTurno {
   CONFIRMADO
   CANCELADO
   ATENDIDO
+  AUSENTE
 }
 
 enum ModalidadTurno {
@@ -136,6 +137,9 @@ model Turno {
   hora                               String                         @db.VarChar(5)
   duracionMinutos                    Int                            @map("duracion_minutos") @db.SmallInt
   estado                             EstadoTurno                    @default(DISPONIBLE)
+  ausenciaRegistradaPorId            String?                        @map("ausencia_registrada_por_id")
+  ausenciaRegistradaPorRol           String?                        @map("ausencia_registrada_por_rol")
+  ausenciaRegistradaAt               DateTime?                      @map("ausencia_registrada_at") @db.Timestamptz(3)
   modalidad                          ModalidadTurno?
   motivoCancelacion                  String?                        @map("motivo_cancelacion")
   estadoNotificacionCancelacion      EstadoNotificacionCancelacion? @map("estado_notificacion_cancelacion")

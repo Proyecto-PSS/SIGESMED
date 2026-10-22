@@ -1,8 +1,13 @@
 import { prisma } from '@/lib/prisma'
 import { RecordatoriosService } from '@/lib/services/recordatorios-service'
-import type { EstadoTurno } from '@/lib/generated/prisma/enums'
+import { EstadoTurno } from '@/lib/generated/prisma/enums'
 
-const ESTADOS_HISTORIAL = ['CONFIRMADO', 'ATENDIDO', 'CANCELADO'] as const satisfies readonly EstadoTurno[]
+const ESTADOS_HISTORIAL = [
+  EstadoTurno.CONFIRMADO,
+  EstadoTurno.ATENDIDO,
+  EstadoTurno.AUSENTE,
+  EstadoTurno.CANCELADO,
+] as const
 
 export type FiltrosHistorialTurnos = {
   estado?: string
@@ -47,7 +52,8 @@ export async function obtenerCitasPaciente(idPaciente: string) {
 
 export async function obtenerHistorialTurnosPaciente(
   idPaciente: string,
-  filtros: FiltrosHistorialTurnos = {}
+  filtros: FiltrosHistorialTurnos = {},
+  ordenar: 'reciente' | 'antiguo' = 'reciente'
 ) {
   let estado: EstadoTurno | undefined
   if (filtros.estado) {
@@ -70,11 +76,15 @@ export async function obtenerHistorialTurnosPaciente(
       }
     : undefined
 
+  const limiteAntiguedad = new Date()
+  limiteAntiguedad.setUTCMonth(limiteAntiguedad.getUTCMonth() - 6)
+  limiteAntiguedad.setUTCHours(0, 0, 0, 0)
+
   return prisma.turno.findMany({
     where: {
       idPaciente,
       ...(estado ? { estado } : {}),
-      ...(fecha ? { fecha } : {}),
+      fecha: { gte: fecha?.gte && fecha.gte > limiteAntiguedad ? fecha.gte : limiteAntiguedad, ...(fecha?.lte ? { lte: fecha.lte } : {}) },
     },
     include: {
       medico: {
@@ -84,9 +94,60 @@ export async function obtenerHistorialTurnosPaciente(
           especialidad: true,
         },
       },
+      pagos: { where: { estado: 'APROBADO' }, orderBy: { createdAt: 'desc' }, take: 1 },
     },
-    orderBy: [{ fecha: 'desc' }, { hora: 'desc' }],
+    orderBy: [{ fecha: ordenar === 'reciente' ? 'desc' : 'asc' }, { hora: ordenar === 'reciente' ? 'desc' : 'asc' }],
   })
+}
+
+export async function contarEstadosHistorialTurnos(idPaciente: string, filtros: FiltrosHistorialTurnos = {}) {
+  const limite = new Date()
+  limite.setUTCMonth(limite.getUTCMonth() - 6)
+  limite.setUTCHours(0, 0, 0, 0)
+  const desde = parsearFechaFiltro(filtros.desde, 'desde')
+  const hasta = parsearFechaFiltro(filtros.hasta, 'hasta')
+  if (desde && hasta && desde > hasta) throw new Error('La fecha "desde" no puede ser posterior a la fecha "hasta".')
+  const fechaGte = desde && desde > limite ? desde : limite
+  const grupos = await prisma.turno.groupBy({
+    by: ['estado'],
+    where: { idPaciente, fecha: { gte: fechaGte, ...(hasta ? { lte: hasta } : {}) } },
+    _count: { _all: true },
+  })
+  return Object.fromEntries(
+    grupos
+      .filter((grupo) => ESTADOS_HISTORIAL.includes(grupo.estado as (typeof ESTADOS_HISTORIAL)[number]))
+      .map((grupo) => [grupo.estado, grupo._count._all])
+  ) as Partial<Record<EstadoTurno, number>>
+}
+
+export async function marcarTurnoAusente(idTurno: string, usuario: { id: string; rol: 'MEDICO' | 'ADMIN' }) {
+  const turno = await prisma.turno.findUnique({ where: { idTurno } })
+  if (!turno) throw Object.assign(new Error('No se encontró el turno.'), { statusCode: 404 })
+  if (usuario.rol === 'MEDICO' && turno.idMedico !== usuario.id) {
+    throw Object.assign(new Error('Solo puede registrar ausencias en sus propios turnos.'), { statusCode: 403 })
+  }
+  if (turno.estado !== 'CONFIRMADO' || !turno.idPaciente) {
+    throw Object.assign(new Error('Solo se pueden marcar como ausentes los turnos reservados.'), { statusCode: 409 })
+  }
+
+  const [anio, mes, dia] = turno.fecha.toISOString().slice(0, 10).split('-').map(Number)
+  const [hora, minutos] = turno.hora.split(':').map(Number)
+  const finTurno = new Date(Date.UTC(anio, mes - 1, dia, hora, minutos) + (turno.duracionMinutos + 180) * 60_000)
+  if (new Date() < finTurno) {
+    throw Object.assign(new Error('El turno solo puede marcarse ausente después de su horario.'), { statusCode: 409 })
+  }
+
+  const actualizado = await prisma.turno.updateMany({
+    where: { idTurno, estado: 'CONFIRMADO', idPaciente: turno.idPaciente },
+    data: {
+      estado: 'AUSENTE',
+      ausenciaRegistradaPorId: usuario.id,
+      ausenciaRegistradaPorRol: usuario.rol,
+      ausenciaRegistradaAt: new Date(),
+    },
+  })
+  if (!actualizado.count) throw Object.assign(new Error('El estado del turno cambió. Actualizá la agenda e intentá de nuevo.'), { statusCode: 409 })
+  return prisma.turno.findUniqueOrThrow({ where: { idTurno } })
 }
 
 function obtenerFechaTurno(fecha: Date, hora: string) {

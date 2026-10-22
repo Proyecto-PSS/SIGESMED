@@ -10,6 +10,7 @@ const ESTADOS_DISPONIBLES = [
   { value: 'CANCELADO', label: 'Cancelado' },
   { value: 'DISPONIBLE', label: 'Disponible' },
   { value: 'ATENDIDO', label: 'Atendido' },
+  { value: 'AUSENTE', label: 'Ausente' },
 ]
 
 export default function GestionTurnosAdmin() {
@@ -29,6 +30,19 @@ export default function GestionTurnosAdmin() {
 
   const [turnoParaNotificar, setTurnoParaNotificar] = useState<TurnoAdminDTO | null>(null)
   const [isNotifying, setIsNotifying] = useState(false)
+  const handleMarcarAusente = async (idTurno: string) => {
+    setError(null)
+    setSuccess(null)
+    try {
+      const response = await fetch(`/api/turnos/${idTurno}/ausente`, { method: 'POST' })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'No se pudo registrar la ausencia.')
+      setTurnos((current) => current.map((turno) => turno.idTurno === idTurno ? { ...turno, estado: 'AUSENTE' } : turno))
+      setSuccess('El turno quedó registrado como ausente.')
+    } catch (err: any) {
+      setError(err.message || 'No se pudo registrar la ausencia.')
+    }
+  }
 
   const cargarTurnos = useCallback(
     async (filtros?: { paciente?: string; fecha?: string; estado?: string }) => {
@@ -183,6 +197,8 @@ export default function GestionTurnosAdmin() {
         return <span className={`${styles.badge} ${styles.badgeDisponible}`}>Disponible</span>
       case 'ATENDIDO':
         return <span className={`${styles.badge} ${styles.badgeAtendido}`}>Atendido</span>
+      case 'AUSENTE':
+        return <span className={`${styles.badge} ${styles.badgeCancelado}`}>Ausente</span>
       default:
         return <span className={styles.badge}>{estado}</span>
     }
@@ -393,6 +409,11 @@ export default function GestionTurnosAdmin() {
                   </td>
                   <td>{renderBadgeNotificacion(turno)}</td>
                   <td style={{ textAlign: 'right' }}>
+                    {turno.estado === 'CONFIRMADO' && turno.paciente && new Date(`${turno.fecha}T${turno.hora}:00-03:00`).getTime() < Date.now() && (
+                      <button type="button" onClick={() => handleMarcarAusente(turno.idTurno)} className={styles.btnActionRetry}>
+                        Marcar ausente
+                      </button>
+                    )}
                     {turno.estado === 'CONFIRMADO' && (
                       <button
                         type="button"
