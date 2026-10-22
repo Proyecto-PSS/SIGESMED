@@ -13,8 +13,12 @@ export async function GET(request: Request) {
     const idempotencyKey =
       searchParams.get('idempotencyKey') ||
       request.headers.get('idempotency-key') ||
+      request.headers.get('x-idempotency-key') ||
       undefined
-    const turnoId = searchParams.get('turnoId') || undefined
+    const turnoId =
+      searchParams.get('turnoId') ||
+      searchParams.get('idTurno') ||
+      undefined
 
     if (!idempotencyKey && !turnoId) {
       return NextResponse.json(

@@ -163,6 +163,44 @@ async function main() {
   }
 
   console.log(`Seed aplicado: ${medicos.length} médicos, 1 paciente y ${turnosGenerados} turnos nuevos para el mes actual.`)
+  // Turnos de demostración de US-26/US-27 para el paciente de prueba existente.
+  const fechaRelativa = (meses: number, dias = 0) => {
+    const fecha = new Date()
+    fecha.setUTCDate(1)
+    fecha.setUTCMonth(fecha.getUTCMonth() + meses)
+    fecha.setUTCDate(fecha.getUTCDate() + dias)
+    return new Date(Date.UTC(fecha.getUTCFullYear(), fecha.getUTCMonth(), fecha.getUTCDate()))
+  }
+  const turnosDemo = [
+    { idTurno: 'demo_historial_reservado', idMedico: 'med_001', fecha: fechaRelativa(1, 14), hora: '10:00', estado: 'CONFIRMADO' as const, modalidad: 'PARTICULAR' as const },
+    { idTurno: 'demo_historial_asistido_1', idMedico: 'med_002', fecha: fechaRelativa(-1, 12), hora: '09:30', estado: 'ATENDIDO' as const, modalidad: 'COBERTURA' as const },
+    { idTurno: 'demo_historial_asistido_2', idMedico: 'med_001', fecha: fechaRelativa(-2, 3), hora: '11:00', estado: 'ATENDIDO' as const, modalidad: 'PARTICULAR' as const },
+    { idTurno: 'demo_historial_ausente', idMedico: 'med_003', fecha: fechaRelativa(-3, 8), hora: '16:00', estado: 'AUSENTE' as const, modalidad: 'COBERTURA' as const },
+    { idTurno: 'demo_historial_cancelado', idMedico: 'med_001', fecha: fechaRelativa(-4, 5), hora: '10:30', estado: 'CANCELADO' as const, modalidad: 'PARTICULAR' as const },
+  ]
+  for (const turno of turnosDemo) {
+    await prisma.turno.upsert({
+      where: { idTurno: turno.idTurno },
+      update: { idPaciente: paciente.idPaciente, ...turno },
+      create: { ...turno, idPaciente: paciente.idPaciente, duracionMinutos: 30 },
+    })
+  }
+  await prisma.pagoTurno.upsert({
+    where: { idempotencyKey: 'demo_pago_historial_asistido' },
+    update: { estado: 'APROBADO', aprobadoAt: new Date() },
+    create: {
+      idTurno: 'demo_historial_asistido_2',
+      idPaciente: paciente.idPaciente,
+      monto: 25000,
+      moneda: 'ARS',
+      estado: 'APROBADO',
+      proveedor: 'SIMULADA',
+      transaccionExternaId: 'DEMO-US26-001',
+      idempotencyKey: 'demo_pago_historial_asistido',
+      aprobadoAt: new Date(),
+    },
+  })
+
   console.log(`Paciente de prueba: ${paciente.email} | ID: ${paciente.idPaciente}`)
 }
 

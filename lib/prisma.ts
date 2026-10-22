@@ -7,7 +7,10 @@ const globalForPrisma = globalThis as unknown as {
 }
 
 function createPrismaClient() {
-  const connectionString = process.env.DATABASE_URL
+  const connectionString =
+    process.env.DATABASE_URL ??
+    process.env.DATABASE_URL_UNPOOLED ??
+    process.env.DIRECT_URL
   if (!connectionString) {
     throw new Error('Falta configurar DATABASE_URL para conectar con Neon.')
   }

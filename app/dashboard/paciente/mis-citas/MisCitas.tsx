@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { RESERVA_CONFIG } from '@/lib/config/reserva-config'
+import { esperar, fetchConTimeout } from '@/lib/utils/resilient-fetch'
 
 type Cita = {
   idTurno: string
@@ -8,6 +10,13 @@ type Cita = {
   hora: string
   duracionMinutos: number
   estado: string
+  modalidad?: string | null
+  pagos?: Array<{
+    idPago: string
+    estado: string
+    monto: any
+    moneda: string
+  }>
   medico: {
     nombre: string
     apellido: string
@@ -68,12 +77,15 @@ function puedeCancelar(cita: Cita) {
   return horasRestantes > 48
 }
 
+type EstadoCancelacion = 'idle' | 'cancelando' | 'reintentando' | 'verificando'
+
 export default function MisCitas({ citas }: Props) {
   const [citasActuales, setCitasActuales] = useState(citas)
   const [error, setError] = useState('')
-  const [citaSeleccionada, setCitaSeleccionada] =
-    useState<string | null>(null)
-  const [cancelando, setCancelando] = useState(false)
+  const [citaSeleccionada, setCitaSeleccionada] = useState<string | null>(null)
+  const [estadoCancelacion, setEstadoCancelacion] = useState<EstadoCancelacion>('idle')
+
+  const cancelando = estadoCancelacion !== 'idle'
 
   function abrirConfirmacion(idTurno: string) {
     setCitaSeleccionada(idTurno)
@@ -88,53 +100,109 @@ export default function MisCitas({ citas }: Props) {
     setCitaSeleccionada(null)
   }
 
+  async function verificarSiFueCancelado(idTurno: string): Promise<boolean> {
+    try {
+      const res = await fetchConTimeout(
+        '/api/pacientes/citas',
+        { method: 'GET' },
+        RESERVA_CONFIG.VERIFY_TIMEOUT_MS
+      )
+      if (res.ok) {
+        const data = await res.json()
+        const citasActualizadas: Cita[] = data.citas ?? []
+        // Si ya no figura en la lista de citas activas del paciente, fue cancelado
+        return !citasActualizadas.some((c) => c.idTurno === idTurno)
+      }
+    } catch {
+      // Error de verificación
+    }
+    return false
+  }
+
   async function cancelarCita() {
     if (!citaSeleccionada || cancelando) {
       return
     }
 
-    try {
-      setCancelando(true)
-      setError('')
+    const idTurnoParaCancelar = citaSeleccionada
+    setError('')
+    setEstadoCancelacion('cancelando')
 
-      const response = await fetch(
-        `/api/pacientes/citas/${citaSeleccionada}/cancelar`,
-        {
-          method: 'POST',
+    let intento = 0
+    let canceladoExitoso = false
+
+    while (intento <= RESERVA_CONFIG.MAX_RETRIES && !canceladoExitoso) {
+      try {
+        if (intento > 0) {
+          setEstadoCancelacion('reintentando')
+          const delay = RESERVA_CONFIG.RETRY_BASE_DELAY_MS * Math.pow(2, intento - 1)
+          await esperar(delay)
         }
-      )
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(
-          data.error ?? 'No se pudo cancelar el turno'
+        const response = await fetchConTimeout(
+          `/api/pacientes/citas/${idTurnoParaCancelar}/cancelar`,
+          {
+            method: 'POST',
+          },
+          RESERVA_CONFIG.REQUEST_TIMEOUT_MS
         )
+
+        if (response.ok) {
+          canceladoExitoso = true
+          break
+        }
+
+        // Error definitivo de negocio (e.g. 409: menos de 48h, 404: no encontrado, 403: no autorizado)
+        if (response.status === 409 || response.status === 400 || response.status === 404 || response.status === 403) {
+          const data = await response.json().catch(() => ({}))
+          setError(data.error ?? 'No se pudo cancelar el turno')
+          setEstadoCancelacion('idle')
+          return
+        }
+
+        // Error transitorio de servidor (502, 503, 504)
+        if ((RESERVA_CONFIG.TRANSIENT_STATUS_CODES as readonly number[]).includes(response.status)) {
+          intento++
+          continue
+        }
+
+        const data = await response.json().catch(() => ({}))
+        setError(data.error ?? 'No se pudo cancelar el turno')
+        setEstadoCancelacion('idle')
+        return
+      } catch {
+        // Timeout o fallo de red
+        intento++
+        // Antes del siguiente reintento o si se agotaron, verificar si ya se canceló en el servidor
+        setEstadoCancelacion('verificando')
+        const yaCancelado = await verificarSiFueCancelado(idTurnoParaCancelar)
+        if (yaCancelado) {
+          canceladoExitoso = true
+          break
+        }
       }
+    }
 
-      setCitasActuales((citasActuales) =>
-        citasActuales.filter(
-          (cita) => cita.idTurno !== citaSeleccionada
-        )
+    if (canceladoExitoso) {
+      setCitasActuales((citasPrevias) =>
+        citasPrevias.filter((cita) => cita.idTurno !== idTurnoParaCancelar)
       )
-
       setCitaSeleccionada(null)
-    } catch (error) {
+      setError('')
+      setEstadoCancelacion('idle')
+    } else {
       setError(
-        error instanceof Error
-          ? error.message
-          : 'No se pudo cancelar el turno'
+        'Error de conexión. No pudimos verificar la cancelación del turno. Tus datos se mantienen intactos. Por favor, intentá nuevamente.'
       )
-    } finally {
-      setCancelando(false)
+      setEstadoCancelacion('idle')
     }
   }
 
   return (
     <>
-      {/* Error */}
+      {/* Error - los datos de las citas permanecen visibles siempre */}
       {error && (
-        <section className="mt-6 border border-red-200 bg-red-50 p-6">
+        <section className="mt-6 border border-red-200 bg-red-50 p-6" role="alert">
           <p className="text-sm text-red-800">
             {error}
           </p>
@@ -142,7 +210,7 @@ export default function MisCitas({ citas }: Props) {
       )}
 
       {/* Sin turnos */}
-      {!error && citasActuales.length === 0 && (
+      {citasActuales.length === 0 && (
         <section className="mt-6 border border-slate-300 bg-white p-6">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Próximos turnos
@@ -166,20 +234,17 @@ export default function MisCitas({ citas }: Props) {
       )}
 
       {/* Lista de turnos */}
-      {!error && citasActuales.length > 0 && (
+      {citasActuales.length > 0 && (
         <section className="mt-6 space-y-4">
-
           {citasActuales.map((cita) => {
             const cancelable = puedeCancelar(cita)
-            const mostrandoConfirmacion =
-              citaSeleccionada === cita.idTurno
+            const mostrandoConfirmacion = citaSeleccionada === cita.idTurno
+            const esParticular = cita.modalidad !== 'COBERTURA'
 
             return (
               <div key={cita.idTurno} className="space-y-3">
-
                 {/* Tarjeta del turno */}
                 <article className="border border-slate-300 bg-white px-4 py-4">
-
                   {/* Cabecera de tarjeta */}
                   <div className="flex items-center justify-between border-b border-slate-300 pb-3">
                     <span className="text-[11px] font-medium uppercase tracking-wide">
@@ -193,7 +258,6 @@ export default function MisCitas({ citas }: Props) {
 
                   {/* Información */}
                   <div className="flex flex-col gap-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-
                     {/* Médico */}
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
@@ -205,6 +269,22 @@ export default function MisCitas({ citas }: Props) {
                         <span className="border border-slate-300 px-2 py-0.5 text-[10px] uppercase tracking-wide">
                           Programado
                         </span>
+
+                        {esParticular ? (
+                          cita.pagos?.[0]?.estado === 'APROBADO' ? (
+                            <span className="border border-emerald-400 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800">
+                              ✓ Pago Aprobado
+                            </span>
+                          ) : (
+                            <span className="border border-amber-400 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800">
+                              ⚠ Pago Pendiente
+                            </span>
+                          )
+                        ) : (
+                          <span className="border border-slate-300 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+                            Cobertura Médica
+                          </span>
+                        )}
                       </div>
 
                       <h2 className="mt-2 text-base font-bold">
@@ -215,32 +295,33 @@ export default function MisCitas({ citas }: Props) {
                     {/* Fecha y lugar */}
                     <div className="space-y-2 text-sm">
                       <p>
-                        <span className="mr-2 text-base">
-                          ◷
-                        </span>
-
+                        <span className="mr-2 text-base">◷</span>
                         {formatearFecha(cita.fecha)}, {cita.hora} hs
                       </p>
 
                       <p>
-                        <span className="mr-2 text-base">
-                          ⌖
-                        </span>
-
-                        {cita.medico.consultorio ??
-                          'Consultorio no especificado'}
+                        <span className="mr-2 text-base">⌖</span>
+                        {cita.medico.consultorio ?? 'Consultorio no especificado'}
                       </p>
                     </div>
 
-                    {/* Cancelación */}
-                    <div className="shrink-0">
+                    {/* Acciones: Pago y Cancelación */}
+                    <div className="shrink-0 flex items-center gap-2">
+                      {esParticular && cita.pagos?.[0]?.estado !== 'APROBADO' && (
+                        <a
+                          href={`/dashboard/paciente/pagos/${cita.idTurno}`}
+                          className="border border-emerald-400 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 hover:border-emerald-500 transition-colors"
+                        >
+                          Abonar consulta
+                        </a>
+                      )}
+
                       {cancelable ? (
                         <button
                           type="button"
-                          onClick={() =>
-                            abrirConfirmacion(cita.idTurno)
-                          }
-                          className="border border-slate-300 bg-white px-4 py-2 text-xs font-medium hover:bg-slate-50"
+                          onClick={() => abrirConfirmacion(cita.idTurno)}
+                          disabled={cancelando}
+                          className="border border-slate-300 bg-white px-4 py-2 text-xs font-medium hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           [ X Cancelar Turno ]
                         </button>
@@ -256,7 +337,6 @@ export default function MisCitas({ citas }: Props) {
                 {/* Confirmación de cancelación */}
                 {mostrandoConfirmacion && cancelable && (
                   <section className="border border-dashed border-slate-400 bg-slate-50 p-4">
-
                     <div className="border-b border-slate-300 pb-2">
                       <span className="text-[11px] uppercase tracking-wide text-slate-600">
                         Flujo: cancelación de turno
@@ -268,13 +348,31 @@ export default function MisCitas({ citas }: Props) {
                     </h2>
 
                     <p className="mt-2 text-sm text-slate-700">
-                      ¿Desea cancelar el turno del{' '}
-                      {formatearFecha(cita.fecha)}? Esta acción
+                      ¿Desea cancelar el turno del {formatearFecha(cita.fecha)}? Esta acción
                       liberará la vacante para otro paciente.
                     </p>
 
-                    <div className="mt-4 flex flex-wrap gap-3">
+                    {estadoCancelacion === 'reintentando' && (
+                      <div
+                        className="mt-3 border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800"
+                        role="status"
+                        aria-live="polite"
+                      >
+                        Error de conexión, reintentando...
+                      </div>
+                    )}
 
+                    {estadoCancelacion === 'verificando' && (
+                      <div
+                        className="mt-3 border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800"
+                        role="status"
+                        aria-live="polite"
+                      >
+                        Verificando estado de la cancelación...
+                      </div>
+                    )}
+
+                    <div className="mt-4 flex flex-wrap gap-3">
                       <button
                         type="button"
                         onClick={cerrarConfirmacion}
@@ -290,19 +388,20 @@ export default function MisCitas({ citas }: Props) {
                         disabled={cancelando}
                         className="bg-black px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        {cancelando
+                        {estadoCancelacion === 'cancelando'
                           ? '[ Cancelando... ]'
-                          : '[ Sí, cancelar turno ]'}
+                          : estadoCancelacion === 'reintentando'
+                            ? '[ Error de conexión, reintentando... ]'
+                            : estadoCancelacion === 'verificando'
+                              ? '[ Verificando... ]'
+                              : '[ Sí, cancelar turno ]'}
                       </button>
-
                     </div>
                   </section>
                 )}
-
               </div>
             )
           })}
-
         </section>
       )}
     </>

@@ -1,8 +1,10 @@
 import { prisma } from '../prisma'
+import { EmailService } from './email-service'
 import {
   DiaSemana,
   DuracionTurno,
   DisponibilidadMedica,
+  EstadoTurno,
   Turno,
   ResumenPublicacion,
 } from '../types/agenda'
@@ -75,7 +77,7 @@ function mapTurno(row: {
   fecha: Date
   hora: string
   duracionMinutos: number
-  estado: 'DISPONIBLE' | 'CONFIRMADO' | 'CANCELADO' | 'ATENDIDO'
+  estado: EstadoTurno
   modalidad: 'PARTICULAR' | 'COBERTURA' | null
   motivoCancelacion: string | null
   createdAt: Date
@@ -132,6 +134,28 @@ export class AgendaService {
     return rows.map(mapDisponibilidad)
   }
 
+  private static verificarAnticipacion48hs(fechas: string[], horaDesde: string) {
+    const ahora = new Date()
+    const limite = new Date(ahora.getTime() + 48 * 60 * 60 * 1000)
+
+    for (const fecha of fechas) {
+      const instanteStr = `${fecha}T${horaDesde}:00-03:00`
+      const instante = new Date(instanteStr)
+      
+      // Ignorar fechas que ya pasaron
+      if (instante < ahora) {
+        continue
+      }
+      
+      // Si la fecha es en el futuro pero menor a 48 horas
+      if (instante < limite) {
+        const err = new Error('No se pueden modificar los horarios de atención con menos de 48 horas de anticipación') as any
+        err.statusCode = 409
+        throw err
+      }
+    }
+  }
+
   /** Guarda la regla y genera sus turnos disponibles en la misma operación. */
   static async guardarDisponibilidad(
     id_medico: string,
@@ -142,7 +166,12 @@ export class AgendaService {
       hora_hasta: string
       duracion_turno_minutos: DuracionTurno
     }
-  ): Promise<{ disponibilidad: DisponibilidadMedica; esNueva: boolean; turnosGenerados: number }> {
+  ): Promise<{
+    disponibilidad: DisponibilidadMedica
+    esNueva: boolean
+    turnosGenerados: number
+    turnosCanceladosInfo?: { pacienteEmail: string; pacienteNombre: string; fechaHora: string; medicoNombre: string }[]
+  }> {
     const { mes_vigencia, dia_semana, hora_desde, hora_hasta, duracion_turno_minutos } = data
 
     if (!validarFormatoMes(mes_vigencia)) throw new Error('Formato de mes inválido. Debe ser YYYY-MM')
@@ -170,84 +199,215 @@ export class AgendaService {
         throw new Error('Regla de negocio: Un médico puede configurar un máximo de 2 días de atención por semana.')
       }
 
+      let turnosCanceladosInfo: { pacienteEmail: string, pacienteNombre: string, fechaHora: string, medicoNombre: string }[] = []
+
       if (existente) {
-        const turnoReservado = await tx.turno.findFirst({
-          where: {
-            idDisponibilidadMedica: existente.idDisponibilidadMedica,
-            estado: { not: 'DISPONIBLE' },
-          },
-          select: { idTurno: true },
+        // Reconciliación de turnos (RF-05)
+        const turnosExistentes = await tx.turno.findMany({
+          where: { idDisponibilidadMedica: existente.idDisponibilidadMedica },
+          include: { paciente: true, medico: true }
         })
-        if (turnoReservado) {
-          throw new Error('No se puede modificar la franja porque ya tiene turnos reservados o atendidos.')
+
+        const turnosProyectados = validarYGenerarTurnos(
+          id_medico,
+          existente.idDisponibilidadMedica,
+          mes_vigencia,
+          dia_semana,
+          hora_desde,
+          hora_hasta,
+          duracion_turno_minutos
+        )
+
+        const fechaAStringLocal = (d: Date) => d.toISOString().slice(0, 10)
+        const setProyectados = new Set(turnosProyectados.map(t => `${fechaAStringLocal(t.fecha)}_${t.hora}`))
+        const setExistentes = new Set(
+          turnosExistentes
+            .filter((t) => t.estado === 'DISPONIBLE' || t.estado === 'CONFIRMADO')
+            .map(t => `${fechaAStringLocal(t.fecha)}_${t.hora}`)
+        )
+
+        const turnosARemover = turnosExistentes.filter(t => !setProyectados.has(`${fechaAStringLocal(t.fecha)}_${t.hora}`))
+        const turnosAAgregar = turnosProyectados.filter(t => !setExistentes.has(`${fechaAStringLocal(t.fecha)}_${t.hora}`))
+
+        const ahora = new Date()
+        const limite = new Date(ahora.getTime() + 48 * 60 * 60 * 1000)
+
+        // Validar 48hs solo en los que cambian (RF-04)
+        const validar48hs = (fecha: Date, hora: string) => {
+          const instanteStr = `${fechaAStringLocal(fecha)}T${hora}:00-03:00`
+          const instante = new Date(instanteStr)
+          if (instante > ahora && instante < limite) {
+            const err = new Error('No se pueden modificar los horarios de atención con menos de 48 horas de anticipación') as any
+            err.statusCode = 409
+            throw err
+          }
         }
 
-        await tx.turno.deleteMany({ where: { idDisponibilidadMedica: existente.idDisponibilidadMedica } })
-      }
+        for (const t of turnosARemover.filter((turno) => turno.estado !== 'CANCELADO' && turno.estado !== 'ATENDIDO')) {
+          validar48hs(t.fecha, t.hora)
+        }
+        for (const t of turnosAAgregar) validar48hs(t.fecha, t.hora)
 
-      const disponibilidad = existente
-        ? await tx.disponibilidadMedica.update({
-            where: { idDisponibilidadMedica: existente.idDisponibilidadMedica },
-            data: {
-              horaDesde: hora_desde,
-              horaHasta: hora_hasta,
-              duracionTurnoMinutos: duracion_turno_minutos,
-            },
-          })
-        : await tx.disponibilidadMedica.create({
-            data: {
-              idMedico: id_medico,
-              mesVigencia: mes,
-              diaSemana: dia_semana,
-              horaDesde: hora_desde,
-              horaHasta: hora_hasta,
-              duracionTurnoMinutos: duracion_turno_minutos,
-            },
-          })
+        // Aplicar cambios a turnos existentes (RF-06)
+        for (const t of turnosARemover) {
+          if (t.estado === 'CONFIRMADO') {
+            await tx.turno.update({
+              where: { idTurno: t.idTurno },
+              data: { estado: 'CANCELADO', motivoCancelacion: 'Modificación de horario de atención' }
+            })
+            if (t.paciente) {
+              turnosCanceladosInfo.push({
+                pacienteEmail: t.paciente.email,
+                pacienteNombre: `${t.paciente.nombre} ${t.paciente.apellido}`,
+                fechaHora: `${fechaAStringLocal(t.fecha)} ${t.hora}`,
+                medicoNombre: `${t.medico.nombre} ${t.medico.apellido}`
+              })
+            }
+          } else if (t.estado === 'DISPONIBLE') {
+            await tx.turno.delete({ where: { idTurno: t.idTurno } })
+          }
+          // Turnos CANCELADO o ATENDIDO se mantienen por historial
+        }
 
-      const nuevosTurnos = validarYGenerarTurnos(
-        id_medico,
-        disponibilidad.idDisponibilidadMedica,
-        mes_vigencia,
-        dia_semana,
-        hora_desde,
-        hora_hasta,
-        duracion_turno_minutos
-      )
-      if (nuevosTurnos.length) await tx.turno.createMany({ data: nuevosTurnos, skipDuplicates: true })
+        const disponibilidad = await tx.disponibilidadMedica.update({
+          where: { idDisponibilidadMedica: existente.idDisponibilidadMedica },
+          data: { horaDesde: hora_desde, horaHasta: hora_hasta, duracionTurnoMinutos: duracion_turno_minutos },
+        })
 
-      return {
-        disponibilidad: mapDisponibilidad(disponibilidad),
-        esNueva: !existente,
-        turnosGenerados: nuevosTurnos.length,
+        if (turnosAAgregar.length > 0) {
+          await tx.turno.createMany({ data: turnosAAgregar, skipDuplicates: true })
+        }
+
+        return {
+          disponibilidad: mapDisponibilidad(disponibilidad),
+          esNueva: false,
+          turnosGenerados: turnosAAgregar.length,
+          turnosCanceladosInfo
+        }
+
+      } else {
+        // Disponibilidad nueva
+        const fechasNuevas = obtenerFechasDelMesParaDia(mes_vigencia, dia_semana)
+        AgendaService.verificarAnticipacion48hs(fechasNuevas, hora_desde)
+        
+        const disponibilidad = await tx.disponibilidadMedica.create({
+          data: { idMedico: id_medico, mesVigencia: mes, diaSemana: dia_semana, horaDesde: hora_desde, horaHasta: hora_hasta, duracionTurnoMinutos: duracion_turno_minutos },
+        })
+        
+        const nuevosTurnos = validarYGenerarTurnos(id_medico, disponibilidad.idDisponibilidadMedica, mes_vigencia, dia_semana, hora_desde, hora_hasta, duracion_turno_minutos)
+        if (nuevosTurnos.length > 0) await tx.turno.createMany({ data: nuevosTurnos, skipDuplicates: true })
+
+        return {
+          disponibilidad: mapDisponibilidad(disponibilidad),
+          esNueva: true,
+          turnosGenerados: nuevosTurnos.length,
+          turnosCanceladosInfo: []
+        }
       }
     })
   }
 
-  static async eliminarDisponibilidad(id_medico: string, id: string): Promise<boolean> {
-    return prisma.$transaction(async (tx) => {
+  static async guardarDisponibilidadConEmails(
+    id_medico: string,
+    data: any
+  ) {
+    const resultado = await this.guardarDisponibilidad(id_medico, data)
+    
+    // Simular el envío de correos de manera asíncrona pero esperando a que terminen para no ser abortados por Next.js
+    if (resultado.turnosCanceladosInfo && resultado.turnosCanceladosInfo.length > 0) {
+      await Promise.all(resultado.turnosCanceladosInfo.map(info => 
+        EmailService.enviarNotificacionCancelacion(
+          info.pacienteEmail,
+          info.pacienteNombre,
+          info.fechaHora,
+          info.medicoNombre,
+          'Modificación de horario de atención'
+        ).catch(err => console.error('Error al enviar email', err))
+      ))
+    }
+    
+    return {
+      disponibilidad: resultado.disponibilidad,
+      esNueva: resultado.esNueva,
+      turnosGenerados: resultado.turnosGenerados,
+      turnosCancelados: resultado.turnosCanceladosInfo ? resultado.turnosCanceladosInfo.length : 0
+    }
+  }
+
+  static async eliminarDisponibilidad(id_medico: string, id: string): Promise<{ turnosCancelados: number }> {
+    const turnosCanceladosInfo: { pacienteEmail: string, pacienteNombre: string, fechaHora: string, medicoNombre: string }[] = []
+    
+    await prisma.$transaction(async (tx) => {
       const row = await tx.disponibilidadMedica.findFirst({
         where: { idDisponibilidadMedica: id, idMedico: id_medico },
       })
-      if (!row) throw new Error('Configuración de disponibilidad no encontrada')
+      if (!row) {
+        // Si no existe, es probable que ya se haya eliminado en una petición concurrente. Ignoramos silenciosamente.
+        return
+      }
 
       const mesVigenciaStr = row.mesVigencia.toISOString().slice(0, 7)
       if (esMesPasado(mesVigenciaStr)) {
         throw pastMonthError()
       }
 
-      const turnoReservado = await tx.turno.findFirst({
-        where: { idDisponibilidadMedica: id, estado: { not: 'DISPONIBLE' } },
-        select: { idTurno: true },
+      const fechas = obtenerFechasDelMesParaDia(mesVigenciaStr, row.diaSemana as DiaSemana)
+      AgendaService.verificarAnticipacion48hs(fechas, row.horaDesde)
+
+      const turnosConfirmados = await tx.turno.findMany({
+        where: { idDisponibilidadMedica: id, estado: 'CONFIRMADO' },
+        include: { paciente: true, medico: true }
       })
-      if (turnoReservado) {
-        throw new Error('No se puede eliminar la franja porque ya tiene turnos reservados o atendidos.')
+
+      for (const t of turnosConfirmados) {
+        if (t.paciente) {
+          turnosCanceladosInfo.push({
+            pacienteEmail: t.paciente.email,
+            pacienteNombre: `${t.paciente.nombre} ${t.paciente.apellido}`,
+            fechaHora: `${fechaAString(t.fecha)} ${t.hora}`,
+            medicoNombre: `${t.medico.nombre} ${t.medico.apellido}`
+          })
+        }
       }
 
-      await tx.turno.deleteMany({ where: { idDisponibilidadMedica: id } })
-      await tx.disponibilidadMedica.delete({ where: { idDisponibilidadMedica: id } })
-      return true
+      const idsTurnosCancelados = turnosConfirmados.map((turno) => turno.idTurno)
+      if (idsTurnosCancelados.length > 0) {
+        await tx.turno.updateMany({
+          where: { idTurno: { in: idsTurnosCancelados }, estado: 'CONFIRMADO' },
+          data: {
+            estado: 'CANCELADO',
+            motivoCancelacion: 'Baja de horario de atención',
+          },
+        })
+        await tx.recordatorioTurno.updateMany({
+          where: {
+            idTurno: { in: idsTurnosCancelados },
+            estado: { in: ['PENDIENTE', 'REINTENTO_PROGRAMADO', 'PROCESANDO'] },
+          },
+          data: {
+            estado: 'CANCELADO',
+            ultimoError: 'Baja de horario de atención',
+          },
+        })
+      }
+
+      await tx.turno.deleteMany({ where: { idDisponibilidadMedica: id, estado: 'DISPONIBLE' } })
+      await tx.disponibilidadMedica.deleteMany({ where: { idDisponibilidadMedica: id } })
     })
+
+    if (turnosCanceladosInfo.length > 0) {
+      await Promise.all(turnosCanceladosInfo.map(info => 
+        EmailService.enviarNotificacionCancelacion(
+          info.pacienteEmail,
+          info.pacienteNombre,
+          info.fechaHora,
+          info.medicoNombre,
+          'Baja de horario de atención'
+        ).catch(err => console.error('Error al enviar email', err))
+      ))
+    }
+
+    return { turnosCancelados: turnosCanceladosInfo.length }
   }
 
   static async obtenerResumenPublicacion(

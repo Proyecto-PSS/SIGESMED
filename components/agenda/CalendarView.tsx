@@ -7,12 +7,14 @@ interface CalendarViewProps {
   currentMonth: string // YYYY-MM
   turnos: Turno[]
   isLoading: boolean
+  onMarkAbsent?: (idTurno: string) => void
 }
 
 export default function CalendarView({
   currentMonth,
   turnos,
   isLoading,
+  onMarkAbsent,
 }: CalendarViewProps) {
   const [vista, setVista] = useState<'mensual' | 'semanal'>('mensual')
   const [diaSeleccionado, setDiaSeleccionado] = useState<string | null>(null)
@@ -30,7 +32,20 @@ export default function CalendarView({
 
   // Filtrar turnos estrictamente pertenecientes al mes seleccionado
   const turnosMesActual = useMemo(() => {
-    return turnos.filter((t) => t.fecha_hora.startsWith(currentMonth))
+    const delMes = turnos.filter((t) => t.fecha_hora.startsWith(currentMonth))
+    const horariosConTurnoActivo = new Set(
+      delMes
+        .filter((turno) => turno.estado === 'DISPONIBLE' || turno.estado === 'CONFIRMADO')
+        .map((turno) => `${turno.fecha_hora}|${turno.duracion_minutos}`)
+    )
+
+    // Una cancelaciÃ³n histÃ³rica y el nuevo cupo disponible comparten horario.
+    // En la agenda mostramos el cupo vigente una sola vez.
+    return delMes.filter(
+      (turno) =>
+        (turno.estado === 'DISPONIBLE' || turno.estado === 'CONFIRMADO') ||
+        !horariosConTurnoActivo.has(`${turno.fecha_hora}|${turno.duracion_minutos}`)
+    )
   }, [turnos, currentMonth])
 
   // Agrupar turnos por fecha YYYY-MM-DD
@@ -295,6 +310,9 @@ export default function CalendarView({
                       <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded text-[10px] font-bold">
                         {t.estado}
                       </span>
+                      {t.estado === 'CONFIRMADO' && onMarkAbsent && new Date(t.fecha_hora) < new Date() && (
+                        <button type="button" onClick={() => onMarkAbsent(t.id)} className="border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-800 rounded">Marcar ausente</button>
+                      )}
                     </div>
                   )
                 })

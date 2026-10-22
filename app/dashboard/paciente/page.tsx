@@ -45,11 +45,14 @@ export default function PacienteDashboardPage() {
               Visualización de citas programadas y opción de cancelación con al menos 48 hs de anticipación.
             </p>
           </Link>
-          <article className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <Link
+            href="/dashboard/paciente/historia-clinica"
+            className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition-colors hover:border-slate-400"
+          >
             <span className="mb-2 block text-xs font-mono font-bold uppercase text-slate-500">Ficha médica</span>
             <h2 className="text-lg font-bold">Mi historial clínico</h2>
             <p className="mt-2 text-sm text-slate-600">Consulta de atenciones anteriores, prescripciones, diagnósticos y estudios solicitados.</p>
-          </article>
+          </Link>
         </section>
       </div>
     </div>

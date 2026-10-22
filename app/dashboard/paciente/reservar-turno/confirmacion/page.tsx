@@ -13,9 +13,10 @@ const nombresEspecialidad: Record<string, string> = {
 export default async function ConfirmacionTurnoPage({
   searchParams,
 }: {
-  searchParams: Promise<{ turno?: string }>
+  searchParams: Promise<{ turno?: string; modalidad?: string }>
 }) {
-  const { turno: idTurno } = await searchParams
+  const { turno: idTurno, modalidad: modalidadParam } = await searchParams
+  const modalidad = modalidadParam === 'COBERTURA' ? 'COBERTURA' : 'PARTICULAR'
   if (!idTurno) {
     return <MensajeConfirmacion mensaje="No se recibió un turno para confirmar." />
   }
@@ -78,11 +79,22 @@ export default async function ConfirmacionTurnoPage({
             <span className="text-[10px] font-medium uppercase text-slate-600">Paciente</span>
             <span>{paciente.nombre} {paciente.apellido} <span className="text-slate-600">(DNI: {paciente.dni})</span></span>
           </div>
+          <div className="grid grid-cols-[130px_1fr] border-t border-slate-200 px-5 py-4 text-sm">
+            <span className="text-[10px] font-medium uppercase text-slate-600">Modalidad</span>
+            <span>
+              <strong>{modalidad === 'COBERTURA' ? 'Cobertura médica' : 'Particular'}</strong>
+              {modalidad === 'COBERTURA' && (
+                <span className="block text-slate-600">
+                  {paciente.obraSocial} · Afiliado {paciente.numeroAfiliado} · Plan {paciente.plan || 'No informado'}
+                </span>
+              )}
+            </span>
+          </div>
         </section>
         <section className="border border-slate-300 bg-white p-4 text-sm">
           Se enviará comprobante de reserva a <strong>{paciente.email}</strong>
         </section>
-        <ConfirmarReserva idTurno={turno.idTurno} idMedico={turno.idMedico} />
+        <ConfirmarReserva idTurno={turno.idTurno} idMedico={turno.idMedico} modalidad={modalidad} />
       </div>
     </main>
   )
