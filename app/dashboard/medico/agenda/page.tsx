@@ -67,6 +67,18 @@ export default function AgendaMedicaPage() {
   // Turnos disponibles de la agenda
   const [turnosPublicados, setTurnosPublicados] = useState<Turno[]>([])
   const [isLoadingTurnos, setIsLoadingTurnos] = useState(false)
+  const marcarAusente = async (idTurno: string) => {
+    setErrorMessage(null)
+    try {
+      const response = await fetch(`/api/turnos/${idTurno}/ausente`, { method: 'POST' })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'No se pudo registrar la ausencia.')
+      setTurnosPublicados((current) => current.map((turno) => turno.id === idTurno ? { ...turno, estado: 'AUSENTE' } : turno))
+      setSuccessMessage('El turno quedó registrado como ausente.')
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'No se pudo registrar la ausencia.')
+    }
+  }
 
   // Connectivity effect (US-19)
   useEffect(() => {
@@ -697,6 +709,7 @@ export default function AgendaMedicaPage() {
             currentMonth={currentMonth}
             turnos={turnosPublicados}
             isLoading={isLoadingTurnos}
+            onMarkAbsent={marcarAusente}
           />
         )}
 

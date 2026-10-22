@@ -7,12 +7,14 @@ interface CalendarViewProps {
   currentMonth: string // YYYY-MM
   turnos: Turno[]
   isLoading: boolean
+  onMarkAbsent?: (idTurno: string) => void
 }
 
 export default function CalendarView({
   currentMonth,
   turnos,
   isLoading,
+  onMarkAbsent,
 }: CalendarViewProps) {
   const [vista, setVista] = useState<'mensual' | 'semanal'>('mensual')
   const [diaSeleccionado, setDiaSeleccionado] = useState<string | null>(null)
@@ -308,6 +310,9 @@ export default function CalendarView({
                       <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded text-[10px] font-bold">
                         {t.estado}
                       </span>
+                      {t.estado === 'CONFIRMADO' && onMarkAbsent && new Date(t.fecha_hora) < new Date() && (
+                        <button type="button" onClick={() => onMarkAbsent(t.id)} className="border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-800 rounded">Marcar ausente</button>
+                      )}
                     </div>
                   )
                 })
