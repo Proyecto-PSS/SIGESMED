@@ -113,6 +113,12 @@ export default async function PagoTurnoPage({
       turno={turnoDTO}
       pagoInicial={pagoDTO}
       tarifa={tarifa}
+      pacienteInfo={{
+        nombre: paciente.nombre || '',
+        apellido: paciente.apellido || '',
+        dni: (paciente as any).dni || '',
+      }}
     />
   )
 }
+
