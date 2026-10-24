@@ -21,6 +21,7 @@
     "@prisma/adapter-neon": "^7.10.0",
     "@prisma/client": "^7.10.0",
     "next": "^16.0.0",
+    "nodemailer": "^10.2.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
