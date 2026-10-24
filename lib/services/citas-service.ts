@@ -39,6 +39,7 @@ export async function obtenerCitasPaciente(idPaciente: string) {
     include: {
       medico: true,
       pagos: {
+        include: { comprobante: true },
         orderBy: { createdAt: 'desc' },
         take: 1,
       },
@@ -94,7 +95,7 @@ export async function obtenerHistorialTurnosPaciente(
           especialidad: true,
         },
       },
-      pagos: { where: { estado: 'APROBADO' }, orderBy: { createdAt: 'desc' }, take: 1 },
+      pagos: { where: { estado: 'APROBADO' }, include: { comprobante: true }, orderBy: { createdAt: 'desc' }, take: 1 },
     },
     orderBy: [{ fecha: ordenar === 'reciente' ? 'desc' : 'asc' }, { hora: ordenar === 'reciente' ? 'desc' : 'asc' }],
   })

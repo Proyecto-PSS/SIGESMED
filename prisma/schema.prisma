@@ -62,6 +62,13 @@ enum ProveedorPago {
   MERCADOPAGO
 }
 
+enum EstadoComprobante {
+  PENDIENTE
+  GENERANDO
+  GENERADO
+  ERROR
+}
+
 model Medico {
   idMedico     String             @id @map("id_medico")
   nombre       String
@@ -297,10 +304,34 @@ model PagoTurno {
 
   turno    Turno    @relation(fields: [idTurno], references: [idTurno], onDelete: Restrict)
   paciente Paciente @relation(fields: [idPaciente], references: [idPaciente], onDelete: Restrict)
+  comprobante ComprobantePago?
 
   @@index([idTurno, estado])
   @@index([idPaciente])
   @@map("pagos_turnos")
+}
+
+model ComprobantePago {
+  idComprobante     String            @id @default(cuid()) @map("id_comprobante")
+  idPago            String            @unique @map("id_pago")
+  numeroComprobante String            @unique @map("numero_comprobante")
+  estado            EstadoComprobante @default(PENDIENTE)
+  archivoKey        String?           @map("archivo_key")
+  archivoContenido  Bytes?            @map("archivo_contenido")
+  mimeType          String            @default("application/pdf") @map("mime_type")
+  nombreArchivo     String            @map("nombre_archivo")
+  tamanoBytes       Int?              @map("tamano_bytes")
+  datosSnapshot     Json?             @map("datos_snapshot")
+  fechaEmision      DateTime          @default(now()) @map("fecha_emision") @db.Timestamptz(3)
+  errorGeneracion   String?           @map("error_generacion")
+  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  pago              PagoTurno         @relation(fields: [idPago], references: [idPago], onDelete: Restrict)
+
+  @@index([estado])
+  @@index([fechaEmision])
+  @@map("comprobantes_pago")
 }
 
 

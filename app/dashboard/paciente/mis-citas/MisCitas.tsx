@@ -16,6 +16,12 @@ type Cita = {
     estado: string
     monto: any
     moneda: string
+    comprobante?: {
+      idComprobante: string
+      numeroComprobante: string
+      estado: string
+      nombreArchivo?: string
+    } | null
   }>
   medico: {
     nombre: string
@@ -84,8 +90,38 @@ export default function MisCitas({ citas }: Props) {
   const [error, setError] = useState('')
   const [citaSeleccionada, setCitaSeleccionada] = useState<string | null>(null)
   const [estadoCancelacion, setEstadoCancelacion] = useState<EstadoCancelacion>('idle')
+  const [descargandoComprobanteId, setDescargandoComprobanteId] = useState<string | null>(null)
+  const [errorDescargaComprobante, setErrorDescargaComprobante] = useState<string>('')
 
   const cancelando = estadoCancelacion !== 'idle'
+
+  async function descargarComprobante(idPago: string, nombreArchivoSugerido?: string) {
+    if (descargandoComprobanteId) return
+    setDescargandoComprobanteId(idPago)
+    setErrorDescargaComprobante('')
+
+    try {
+      const res = await fetch(`/api/pagos/${idPago}/comprobante/descargar`)
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}))
+        throw new Error(errJson.error || 'No se pudo descargar el comprobante.')
+      }
+
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = nombreArchivoSugerido || `comprobante-${idPago}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (err: any) {
+      setErrorDescargaComprobante(err.message || 'Error al descargar el comprobante.')
+    } finally {
+      setDescargandoComprobanteId(null)
+    }
+  }
 
   function abrirConfirmacion(idTurno: string) {
     setCitaSeleccionada(idTurno)
@@ -314,6 +350,23 @@ export default function MisCitas({ citas }: Props) {
                         >
                           Abonar consulta
                         </a>
+                      )}
+
+                      {esParticular && cita.pagos?.[0]?.estado === 'APROBADO' && (
+                        <button
+                          type="button"
+                          onClick={() => descargarComprobante(cita.pagos![0].idPago, cita.pagos![0].comprobante?.nombreArchivo)}
+                          disabled={descargandoComprobanteId === cita.pagos![0].idPago}
+                          className="inline-flex items-center gap-1.5 border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50 transition-colors disabled:opacity-50"
+                          title="Descargar comprobante en formato PDF"
+                        >
+                          <span aria-hidden="true">📄</span>
+                          <span>
+                            {descargandoComprobanteId === cita.pagos![0].idPago
+                              ? 'Descargando...'
+                              : 'Comprobante PDF'}
+                          </span>
+                        </button>
                       )}
 
                       {cancelable ? (

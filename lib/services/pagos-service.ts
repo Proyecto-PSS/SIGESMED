@@ -3,6 +3,7 @@ import { prisma } from '../prisma'
 import { Prisma } from '../generated/prisma/client'
 import { EstadoPago, ProveedorPago } from '../generated/prisma/enums'
 import { PAGOS_CONFIG, obtenerTarifaConsulta } from '../config/pagos-config'
+import { ComprobantePagoService, ComprobanteDTO } from './comprobante-pago-service'
 
 export interface IniciarPagoInput {
   idTurno: string
@@ -34,6 +35,7 @@ export interface PagoTurnoDTO {
   aprobadoAt: string | null
   createdAt: string
   updatedAt: string
+  comprobante?: ComprobanteDTO | null
   turno?: {
     idTurno: string
     fecha: string
@@ -259,7 +261,17 @@ export class PagosService {
     // 2. Idempotencia ante pagos ya aprobados
     if (pagoActual.estado === 'APROBADO') {
       if (resultado === 'APROBADO') {
-        return this.mapearPagoADTO(pagoActual)
+        // Asegurar que tenga comprobante generado
+        try {
+          await ComprobantePagoService.generarComprobantePago(idPago)
+        } catch (error) {
+          console.error('[PAGOS-SERVICE] Error en comprobante para pago ya aprobado:', error)
+        }
+        const pagoRefrescado = await prisma.pagoTurno.findUniqueOrThrow({
+          where: { idPago },
+          include: { comprobante: true, turno: { include: { medico: true } } },
+        })
+        return this.mapearPagoADTO(pagoRefrescado)
       }
       throw errorConEstado(
         'No se puede modificar ni rechazar un pago que ya fue aprobado previamente.',
@@ -334,9 +346,20 @@ export class PagosService {
       )
     }
 
+    // RF-24.1: Al confirmar el pago, iniciar automáticamente la generación del comprobante
+    if (resultado === 'APROBADO') {
+      try {
+        await ComprobantePagoService.generarComprobantePago(idPago)
+      } catch (error) {
+        // La generación no debe provocar que un pago confirmado se revierta si falla la creación del PDF
+        console.error('[PAGOS-SERVICE] Error no bloqueante al generar comprobante de pago:', error)
+      }
+    }
+
     const pagoActualizado = await prisma.pagoTurno.findUniqueOrThrow({
       where: { idPago },
       include: {
+        comprobante: true,
         turno: { include: { medico: true } },
       },
     })
@@ -358,6 +381,7 @@ export class PagosService {
         idPaciente,
       },
       include: {
+        comprobante: true,
         turno: { include: { medico: true } },
       },
     })
@@ -400,6 +424,7 @@ export class PagosService {
         idPaciente,
       },
       include: {
+        comprobante: true,
         turno: { include: { medico: true } },
       },
       orderBy: { createdAt: 'desc' },
@@ -436,6 +461,19 @@ export class PagosService {
       aprobadoAt: pago.aprobadoAt ? pago.aprobadoAt.toISOString() : null,
       createdAt: pago.createdAt.toISOString(),
       updatedAt: pago.updatedAt.toISOString(),
+      comprobante: pago.comprobante
+        ? {
+            idComprobante: pago.comprobante.idComprobante,
+            idPago: pago.comprobante.idPago,
+            numeroComprobante: pago.comprobante.numeroComprobante,
+            estado: pago.comprobante.estado,
+            nombreArchivo: pago.comprobante.nombreArchivo,
+            mimeType: pago.comprobante.mimeType,
+            tamanoBytes: pago.comprobante.tamanoBytes,
+            fechaEmision: pago.comprobante.fechaEmision.toISOString(),
+            errorGeneracion: pago.comprobante.errorGeneracion,
+          }
+        : null,
       turno: pago.turno
         ? {
             idTurno: pago.turno.idTurno,

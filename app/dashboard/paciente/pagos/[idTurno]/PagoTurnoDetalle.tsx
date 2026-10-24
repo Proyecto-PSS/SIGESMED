@@ -46,6 +46,11 @@ function formatearFecha(fecha: string) {
 
 export default function PagoTurnoDetalle({ idTurno, turno, pagoInicial, tarifa }: Props) {
   const [pago, setPago] = useState<any | null>(pagoInicial)
+  const [comprobante, setComprobante] = useState<any | null>(pagoInicial?.comprobante || null)
+  const [descargando, setDescargando] = useState<boolean>(false)
+  const [errorDescarga, setErrorDescarga] = useState<string>('')
+  const [reintentandoComprobante, setReintentandoComprobante] = useState<boolean>(false)
+
   const [estadoTransaccion, setEstadoTransaccion] = useState<'IDLE' | 'PROCESANDO' | 'APROBADO' | 'RECHAZADO' | 'ERROR'>(
     pagoInicial?.estado === 'APROBADO'
       ? 'APROBADO'
@@ -60,6 +65,76 @@ export default function PagoTurnoDetalle({ idTurno, turno, pagoInicial, tarifa }
 
   const estaProcesando = estadoTransaccion === 'PROCESANDO'
   const yaAprobado = estadoTransaccion === 'APROBADO' || pago?.estado === 'APROBADO'
+
+  async function consultarEstadoComprobante(idPago: string) {
+    try {
+      const res = await fetch(`/api/pagos/${idPago}/comprobante`)
+      if (res.ok) {
+        const data = await res.json()
+        if (data.comprobante) {
+          setComprobante(data.comprobante)
+        }
+      }
+    } catch {
+      // Ignorar fallos de sondeo
+    }
+  }
+
+  async function reintentarGeneracion() {
+    const idPagoActivo = pago?.idPago || pagoInicial?.idPago
+    if (!idPagoActivo || reintentandoComprobante) return
+
+    setReintentandoComprobante(true)
+    setErrorDescarga('')
+
+    try {
+      const res = await fetch(`/api/pagos/${idPagoActivo}/comprobante`, {
+        method: 'POST',
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(data.error || 'No se pudo generar el comprobante')
+      }
+      if (data.comprobante) {
+        setComprobante(data.comprobante)
+      }
+    } catch (err: any) {
+      setErrorDescarga(err.message || 'Error al reintentar la creación del comprobante.')
+    } finally {
+      setReintentandoComprobante(false)
+    }
+  }
+
+  async function descargarComprobante() {
+    const idPagoActivo = pago?.idPago || pagoInicial?.idPago
+    if (!idPagoActivo || descargando) return
+
+    setDescargando(true)
+    setErrorDescarga('')
+
+    try {
+      const res = await fetch(`/api/pagos/${idPagoActivo}/comprobante/descargar`)
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        throw new Error(errData.error || 'No se pudo descargar el comprobante.')
+      }
+
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = comprobante?.nombreArchivo || `comprobante-${idPagoActivo}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (err: any) {
+      setErrorDescarga(err.message || 'Error al descargar el archivo PDF.')
+    } finally {
+      setDescargando(false)
+    }
+  }
 
   async function iniciarYProcesarPago() {
     if (estaProcesando || yaAprobado) return
@@ -116,6 +191,12 @@ export default function PagoTurnoDetalle({ idTurno, turno, pagoInicial, tarifa }
 
       if (pagoResultado.estado === 'APROBADO') {
         setEstadoTransaccion('APROBADO')
+        if (pagoResultado.comprobante) {
+          setComprobante(pagoResultado.comprobante)
+        } else {
+          // Consultar comprobante en caso de que su generación esté en segundo plano
+          consultarEstadoComprobante(pagoResultado.idPago)
+        }
       } else if (pagoResultado.estado === 'RECHAZADO') {
         setEstadoTransaccion('RECHAZADO')
         setMensajeError(pagoResultado.motivoRechazo || 'El pago fue rechazado.')
@@ -182,17 +263,106 @@ export default function PagoTurnoDetalle({ idTurno, turno, pagoInicial, tarifa }
 
           {/* Estados de la transacción */}
           {yaAprobado && (
-            <section className={styles.alertaAprobado} role="status" aria-live="polite">
-              <h2 style={{ margin: 0, fontSize: '1.15rem' }}>✓ ¡Pago Aprobado Exitosamente!</h2>
-              <p style={{ margin: 0, fontSize: '0.875rem' }}>
-                Tu pago fue registrado y confirmado. Tu consulta médica quedó formalmente abonada.
-              </p>
-              {pago?.transaccionExternaId && (
-                <div style={{ fontSize: '0.8rem', color: '#047857', fontFamily: 'monospace' }}>
-                  Comprobante ID: {pago.transaccionExternaId}
+            <>
+              <section className={styles.alertaAprobado} role="status" aria-live="polite">
+                <h2 style={{ margin: 0, fontSize: '1.15rem' }}>✓ ¡Pago Aprobado Exitosamente!</h2>
+                <p style={{ margin: 0, fontSize: '0.875rem' }}>
+                  Tu pago fue registrado y confirmado. Tu consulta médica quedó formalmente abonada.
+                </p>
+                {pago?.transaccionExternaId && (
+                  <div style={{ fontSize: '0.8rem', color: '#047857', fontFamily: 'monospace' }}>
+                    Referencia de pago: {pago.transaccionExternaId}
+                  </div>
+                )}
+              </section>
+
+              {/* RF-24.3: Sección de comprobante y descarga en pantalla de éxito */}
+              <section className={styles.seccionComprobante} aria-label="Comprobante de pago">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 700, color: '#0f172a' }}>
+                      Comprobante de Pago
+                    </h3>
+                    <p style={{ margin: '0.2rem 0 0', fontSize: '0.8125rem', color: '#64748b' }}>
+                      Constancia formal de pago de consulta médica en formato PDF.
+                    </p>
+                  </div>
+                  {comprobante?.numeroComprobante && (
+                    <span style={{ fontSize: '0.75rem', fontFamily: 'monospace', fontWeight: 600, color: '#475569', background: '#f1f5f9', padding: '0.25rem 0.5rem', borderRadius: '4px' }}>
+                      N° {comprobante.numeroComprobante}
+                    </span>
+                  )}
                 </div>
-              )}
-            </section>
+
+                {comprobante?.estado === 'GENERADO' ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.25rem' }}>
+                    <button
+                      type="button"
+                      onClick={descargarComprobante}
+                      disabled={descargando}
+                      className={styles.btnDescarga}
+                    >
+                      {descargando ? (
+                        <>
+                          <span className={styles.spinner} aria-hidden="true" />
+                          <span>Descargando documento...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span aria-hidden="true">📥</span>
+                          <span>Descargar comprobante (PDF)</span>
+                        </>
+                      )}
+                    </button>
+                    <span style={{ fontSize: '0.75rem', color: '#64748b', textAlign: 'center' }}>
+                      {comprobante.tamanoBytes
+                        ? `Archivo PDF (${Math.round(comprobante.tamanoBytes / 1024)} KB) • Listo para imprimir o guardar`
+                        : 'Archivo PDF • Listo para descargar'}
+                    </span>
+                  </div>
+                ) : comprobante?.estado === 'ERROR' ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.25rem' }}>
+                    <div style={{ fontSize: '0.8125rem', color: '#991b1b', background: '#fef2f2', border: '1px solid #fecaca', padding: '0.6rem 0.75rem', borderRadius: '6px' }}>
+                      Ocurrió un problema técnico al generar el archivo PDF. Tu pago sigue confirmado y seguro.
+                    </div>
+                    <button
+                      type="button"
+                      onClick={reintentarGeneracion}
+                      disabled={reintentandoComprobante}
+                      className={styles.btnReintentarComprobante}
+                    >
+                      {reintentandoComprobante ? (
+                        <>
+                          <span className={styles.spinnerDark} aria-hidden="true" />
+                          <span>Generando nuevamente...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span aria-hidden="true">↻</span>
+                          <span>Reintentar generación de comprobante</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: '#f8fafc', border: '1px solid #e2e8f0', padding: '0.75rem', borderRadius: '6px' }}>
+                    <span className={styles.spinnerDark} aria-hidden="true" />
+                    <div style={{ fontSize: '0.8125rem', color: '#334155' }}>
+                      <strong>Estamos preparando tu comprobante...</strong>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                        Estará disponible para descargar en unos segundos.
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {errorDescarga && (
+                  <div style={{ fontSize: '0.75rem', color: '#991b1b', background: '#fef2f2', padding: '0.5rem', borderRadius: '4px' }}>
+                    {errorDescarga}
+                  </div>
+                )}
+              </section>
+            </>
           )}
 
           {estadoTransaccion === 'RECHAZADO' && (
