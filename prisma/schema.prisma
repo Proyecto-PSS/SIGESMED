@@ -97,6 +97,7 @@ model Paciente {
   telefono   String?
   obraSocial String?  @map("obra_social")
   numeroAfiliado String? @map("numero_afiliado")
+  plan       String?
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 

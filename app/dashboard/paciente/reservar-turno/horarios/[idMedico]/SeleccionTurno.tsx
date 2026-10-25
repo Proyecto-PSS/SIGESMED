@@ -182,14 +182,14 @@ export default function SeleccionTurno({ turnos }: Props) {
         </p>
         {seleccionado ? (
           <Link
-            href={`/dashboard/paciente/reservar-turno/confirmacion?turno=${seleccionado.id}`}
+            href={`/dashboard/paciente/reservar-turno/modalidad?turno=${seleccionado.id}`}
             className="bg-black px-4 py-3 text-center text-xs font-semibold text-white hover:bg-slate-800"
           >
-            Continuar a Confirmación
+            Continuar a Modalidad
           </Link>
         ) : (
           <span className="cursor-not-allowed bg-slate-300 px-4 py-3 text-center text-xs font-semibold text-slate-500">
-            Continuar a Confirmación
+            Continuar a Modalidad
           </span>
         )}
       </section>
