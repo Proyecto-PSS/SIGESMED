@@ -14,6 +14,7 @@ concurrency:
 jobs:
   procesar-recordatorios:
     runs-on: ubuntu-latest
+    environment: Production
     timeout-minutes: 5
     steps:
       - name: Invocar endpoint de recordatorios
