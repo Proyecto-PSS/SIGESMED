@@ -1,60 +1,93 @@
 .contenedor {
   min-height: 100vh;
-  background-color: #f8fafc;
-  padding: 1.5rem 1rem;
+  background-color: #f1f5f9;
+  background-image: radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.05) 0px, transparent 50%),
+                    radial-gradient(at 100% 100%, rgba(14, 165, 233, 0.05) 0px, transparent 50%);
+  padding: 2rem 1rem;
   color: #0f172a;
   font-family: inherit;
 }
 
 .cardPrincipal {
-  max-width: 640px;
+  max-width: 680px;
   margin: 0 auto;
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  border-radius: 16px;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.06), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
   overflow: hidden;
+  transition: all 0.3s ease;
 }
 
 .cabecera {
-  padding: 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
-  background: #fdfdfe;
+  padding: 1.75rem 2rem 1.25rem;
+  border-bottom: 1px solid #f1f5f9;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.cabeceraTexto {
+  flex: 1;
 }
 
 .superTitulo {
   display: block;
-  font-size: 0.75rem;
+  font-size: 0.725rem;
   font-family: monospace;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #64748b;
+  color: #6366f1;
   margin-bottom: 0.25rem;
 }
 
 .titulo {
-  font-size: 1.35rem;
+  font-size: 1.4rem;
   font-weight: 700;
   color: #0f172a;
+  margin: 0 0 0.25rem 0;
+  letter-spacing: -0.02em;
+}
+
+.subtitulo {
+  font-size: 0.875rem;
+  color: #64748b;
   margin: 0;
 }
 
-.cuerpo {
-  padding: 1.5rem;
+.badgeSeguridad {
   display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #059669;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  padding: 0.35rem 0.65rem;
+  border-radius: 9999px;
+  white-space: nowrap;
 }
 
+.cuerpo {
+  padding: 1.75rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Resumen del Turno */
 .resumenTurno {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 1.25rem;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.65rem;
 }
 
 .filaDato {
@@ -75,79 +108,404 @@
   text-align: right;
 }
 
-.montoDestacado {
-  font-size: 1.25rem;
-  color: #047857;
-  font-weight: 700;
-}
-
-.simulacionBanner {
-  background-color: #f0fdf4;
-  border: 1px solid #bbf7d0;
-  color: #166534;
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
-  font-size: 0.8125rem;
+.filaMonto {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 0.5rem;
+  border-top: 1px dashed #cbd5e1;
+  padding-top: 0.75rem;
+  margin-top: 0.25rem;
 }
 
-.simulacionSelector {
+.montoEtiqueta {
+  font-size: 0.925rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.montoDestacado {
+  font-size: 1.35rem;
+  color: #047857;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+/* Visor Interactivo de Tarjeta Plástica (3D) */
+.tarjetaWrapper {
+  perspective: 1000px;
+  width: 100%;
+  max-width: 380px;
+  height: 220px;
+  margin: 0.5rem auto 1rem;
+}
+
+.tarjeta3D {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 16px;
+  box-shadow: 0 15px 35px rgba(15, 23, 42, 0.15), 0 5px 15px rgba(0, 0, 0, 0.08);
+}
+
+.tarjetaFlipped {
+  transform: rotateY(180deg);
+}
+
+.tarjetaFrente,
+.tarjetaDorso {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 16px;
+  backface-visibility: hidden;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  justify-content: space-between;
+  padding: 1.5rem;
+  color: #ffffff;
+  box-sizing: border-box;
+}
+
+/* Fondos temáticos por marca */
+.bgVisa {
+  background: linear-gradient(135deg, #1e3a8a 0%, #1e1b4b 60%, #0f172a 100%);
+}
+
+.bgMastercard {
+  background: linear-gradient(135deg, #27272a 0%, #18181b 45%, #7c2d12 100%);
+}
+
+.bgAmex {
+  background: linear-gradient(135deg, #047857 0%, #064e3b 60%, #022c22 100%);
+}
+
+.bgDefault {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+}
+
+.tarjetaSheen {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.15) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.tarjetaHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  z-index: 2;
+}
+
+.chipYContactless {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.chipSim {
+  width: 44px;
+  height: 32px;
+  background: linear-gradient(135deg, #d4af37 0%, #fef08a 50%, #b45309 100%);
+  border-radius: 6px;
+  border: 1px solid #ca8a04;
+  position: relative;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.4);
+}
+
+.chipLineH {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.chipLineV {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.brandLogoTexto {
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.numeroDisplay {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+  position: relative;
+  z-index: 2;
+  margin: 0.5rem 0;
+}
+
+.tarjetaFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  position: relative;
+  z-index: 2;
+}
+
+.tarjetaLabel {
+  display: block;
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 0.15rem;
+}
+
+.tarjetaValor {
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Dorso de la tarjeta */
+.tarjetaDorso {
+  transform: rotateY(180deg);
+  padding: 1.5rem 0;
+}
+
+.bandaMagnetica {
+  width: 100%;
+  height: 42px;
+  background: #020617;
   margin-top: 0.5rem;
 }
 
-.radioOption {
+.panelCvv {
+  padding: 0 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.cvvBarra {
+  width: 100%;
+  background: #ffffff;
+  color: #0f172a;
+  height: 34px;
+  border-radius: 4px;
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  font-size: 0.875rem;
-  cursor: pointer;
-  padding: 0.6rem 0.75rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  background: #fff;
-  transition: all 0.2s ease;
+  justify-content: flex-end;
+  padding: 0 0.75rem;
+  font-family: monospace;
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: 0.1em;
 }
 
-.radioOption:hover {
-  border-color: #94a3b8;
+.cvvHelperDorso {
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin-top: 0.25rem;
+}
+
+/* Toolbar de Tarjetas de Prueba */
+.toolbarPruebas {
   background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
 }
 
-.radioOptionSelected {
-  border-color: #0f172a;
-  background: #f1f5f9;
+.toolbarTitulo {
+  font-size: 0.75rem;
   font-weight: 600;
+  color: #475569;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
+.pillsPruebas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.btnPillPrueba {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.725rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btnPillPrueba:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+/* Formulario */
+.formularioTarjeta {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.grupoCampo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.gridCampos2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.gridCampos3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1rem;
+}
+
+.labelCampo {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #334155;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.inputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.inputControl {
+  width: 100%;
+  padding: 0.75rem 0.875rem;
+  font-size: 0.9375rem;
+  color: #0f172a;
+  background-color: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  outline: none;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.inputControl:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.inputValido {
+  border-color: #10b981;
+}
+
+.inputError {
+  border-color: #ef4444;
+  background-color: #fffaf0;
+}
+
+.badgeInputMarca {
+  position: absolute;
+  right: 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #6366f1;
+  background: #f1f5f9;
+  padding: 0.2rem 0.45rem;
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+.msgErrorCampo {
+  font-size: 0.725rem;
+  color: #dc2626;
+  font-weight: 500;
+}
+
+/* Selector de Cuotas */
+.selectControl {
+  width: 100%;
+  padding: 0.75rem 0.875rem;
+  font-size: 0.9rem;
+  color: #0f172a;
+  background-color: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  outline: none;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.selectControl:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+/* Botones de acción */
 .btnPrimario {
   width: 100%;
-  padding: 0.875rem 1.25rem;
-  background-color: #0f172a;
+  padding: 0.95rem 1.5rem;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
   color: #ffffff;
   border: none;
-  border-radius: 8px;
-  font-weight: 600;
-  font-size: 0.9375rem;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 1rem;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  transition: background-color 0.2s;
+  gap: 0.6rem;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+  transition: all 0.2s ease;
 }
 
 .btnPrimario:hover:not(:disabled) {
-  background-color: #1e293b;
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.2);
+}
+
+.btnPrimario:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .btnPrimario:disabled {
-  background-color: #94a3b8;
+  background: #94a3b8;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 .btnSecundario {
@@ -163,24 +521,121 @@
   font-size: 0.875rem;
   text-decoration: none;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
 }
 
 .btnSecundario:hover {
-  background: #f1f5f9;
+  background: #f8fafc;
+  border-color: #94a3b8;
   color: #0f172a;
 }
 
-.alertaAprobado {
-  background-color: #ecfdf5;
-  border: 1px solid #a7f3d0;
-  color: #065f46;
-  padding: 1.25rem;
+.btnImprimir {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #1e293b;
+  padding: 0.75rem 1.25rem;
   border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.btnImprimir:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+/* Insignias de confianza */
+.footerSeguridad {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #f1f5f9;
+  text-align: center;
+}
+
+.seguridadTexto {
+  font-size: 0.75rem;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.sellosSeguridad {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.selloTag {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #475569;
+  background: #f1f5f9;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  letter-spacing: 0.04em;
+}
+
+/* Alertas y Comprobante Aprobado */
+.voucherAprobado {
+  background: #ffffff;
+  border: 2px solid #a7f3d0;
+  border-radius: 14px;
+  padding: 2rem 1.5rem;
   text-align: center;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 1.25rem;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.08);
+}
+
+.iconoExitoWrapper {
+  width: 60px;
+  height: 60px;
+  background: #d1fae5;
+  color: #059669;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  font-size: 1.75rem;
+  font-weight: 800;
+}
+
+.voucherTitulo {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #065f46;
+  margin: 0 0 0.25rem 0;
+}
+
+.voucherSubtitulo {
+  font-size: 0.875rem;
+  color: #047857;
+  margin: 0;
+}
+
+.comprobanteCaja {
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  padding: 1.25rem;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
 }
 
 .alertaRechazado {
@@ -188,8 +643,7 @@
   border: 1px solid #fecaca;
   color: #991b1b;
   padding: 1.25rem;
-  border-radius: 8px;
-  text-align: center;
+  border-radius: 10px;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -200,24 +654,128 @@
   border: 1px solid #fde68a;
   color: #92400e;
   padding: 1.25rem;
-  border-radius: 8px;
-  text-align: center;
+  border-radius: 10px;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
 
 .spinner {
-  width: 1rem;
-  height: 1rem;
+  width: 1.15rem;
+  height: 1.15rem;
   border: 2px solid rgba(255, 255, 255, 0.3);
   border-top-color: #ffffff;
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }
 
+.spinnerDark {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid #cbd5e1;
+  border-top-color: #0f172a;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+.seccionComprobante {
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.btnDescarga {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background-color: #047857;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color 0.2s;
+}
+
+.btnDescarga:hover:not(:disabled) {
+  background-color: #065f46;
+}
+
+.btnDescarga:disabled {
+  background-color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.btnReintentarComprobante {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  background-color: #ffffff;
+  color: #0f172a;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btnReintentarComprobante:hover:not(:disabled) {
+  background-color: #f1f5f9;
+}
+
+.btnReintentarComprobante:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 640px) {
+  .cuerpo {
+    padding: 1.25rem;
+  }
+  .gridCampos2,
+  .gridCampos3 {
+    grid-template-columns: 1fr;
+  }
+  .tarjetaWrapper {
+    max-width: 100%;
+    height: 200px;
+  }
+  .numeroDisplay {
+    font-size: 1.05rem;
+  }
+}
+
+@media print {
+  .tarjetaWrapper,
+  .btnPrimario,
+  .btnSecundario,
+  .btnImprimir,
+  .toolbarPruebas {
+    display: none !important;
+  }
+  .contenedor {
+    background: none;
+    padding: 0;
+  }
+  .cardPrincipal {
+    box-shadow: none;
+    border: none;
   }
 }

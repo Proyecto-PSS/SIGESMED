@@ -1,3 +1,5 @@
+import nodemailer from 'nodemailer'
+
 export interface DatosRecordatorioEmail {
   email: string
   pacienteNombre: string
@@ -16,6 +18,16 @@ export interface DatosAvisoCancelacionEmail {
   especialidad?: string | null
   fecha: string
   hora: string
+}
+
+export interface DatosConfirmacionTurnoEmail {
+  email: string
+  pacienteNombre: string
+  medicoNombre: string
+  especialidad: string
+  fecha: string
+  hora: string
+  consultorio?: string | null
 }
 
 export interface ResultadoEnvioEmail {
@@ -177,6 +189,58 @@ function escapeHtml(str: string): string {
     .replace(/'/g, '&#39;')
 }
 
+export function construirPlantillaConfirmacionTurno(datos: DatosConfirmacionTurnoEmail): {
+  asunto: string
+  html: string
+  textoPlano: string
+} {
+  const asunto = 'Confirmación de tu turno médico - SIGESMED'
+  const consultorioHtml = datos.consultorio?.trim()
+    ? `<tr><td style="padding: 8px 0; color: #4b5563;">Consultorio:</td><td style="padding: 8px 0; color: #111827; font-weight: 600; text-align: right;">${escapeHtml(datos.consultorio.trim())}</td></tr>`
+    : ''
+  const consultorioTexto = datos.consultorio?.trim()
+    ? `\n- Consultorio: ${datos.consultorio.trim()}`
+    : ''
+
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${asunto}</title></head>
+<body style="margin:0;padding:24px 12px;font-family:Arial,sans-serif;background:#f3f4f6;color:#1f2937;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center">
+    <table role="presentation" width="100%" style="max-width:560px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
+      <tr><td style="background:#0284c7;padding:24px;text-align:center;color:#fff;"><h1 style="margin:0;font-size:20px;">SIGESMED</h1><p style="margin:6px 0 0;">Confirmación de turno</p></td></tr>
+      <tr><td style="padding:28px 24px;">
+        <p>Hola <strong>${escapeHtml(datos.pacienteNombre)}</strong>,</p>
+        <p>Tu turno quedó confirmado. Estos son los datos de la consulta:</p>
+        <table role="presentation" width="100%" style="border-collapse:collapse;background:#f8fafc;padding:16px;">
+          <tr><td style="padding:8px 0;color:#4b5563;">Profesional:</td><td style="padding:8px 0;font-weight:600;text-align:right;">Dr./Dra. ${escapeHtml(datos.medicoNombre)}</td></tr>
+          <tr><td style="padding:8px 0;color:#4b5563;">Especialidad:</td><td style="padding:8px 0;font-weight:600;text-align:right;">${escapeHtml(datos.especialidad)}</td></tr>
+          <tr><td style="padding:8px 0;color:#4b5563;">Fecha:</td><td style="padding:8px 0;font-weight:600;text-align:right;">${escapeHtml(datos.fecha)}</td></tr>
+          <tr><td style="padding:8px 0;color:#4b5563;">Horario:</td><td style="padding:8px 0;font-weight:600;text-align:right;">${escapeHtml(datos.hora)} hs</td></tr>
+          ${consultorioHtml}
+        </table>
+        <p style="margin-top:24px;color:#6b7280;font-size:13px;">Este es un correo automático de SIGESMED. No respondas a este mensaje.</p>
+      </td></tr>
+    </table>
+  </td></tr></table>
+</body>
+</html>`
+
+  const textoPlano = `SIGESMED - Confirmación de tu turno médico
+
+Hola ${datos.pacienteNombre},
+
+Tu turno quedó confirmado:
+- Profesional: Dr./Dra. ${datos.medicoNombre}
+- Especialidad: ${datos.especialidad}
+- Fecha: ${datos.fecha}
+- Horario: ${datos.hora} hs${consultorioTexto}
+
+Este es un correo automático de SIGESMED. No respondas a este mensaje.`
+
+  return { asunto, html, textoPlano }
+}
+
 export function construirPlantillaAvisoCancelacion(datos: DatosAvisoCancelacionEmail): {
   asunto: string
   html: string
@@ -290,6 +354,64 @@ Equipo de Administración de SIGESMED`
 }
 
 export class EmailService {
+  /** Envía el comprobante de una reserva confirmada usando Resend. */
+  static async enviarConfirmacionTurno(
+    datos: DatosConfirmacionTurnoEmail
+  ): Promise<ResultadoEnvioEmail> {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!datos.email || !emailRegex.test(datos.email.trim())) {
+      return {
+        ok: false,
+        error: 'Dirección de correo electrónico inválida o ausente',
+        esErrorTransitorio: false,
+      }
+    }
+
+    const host = process.env.SMTP_HOST
+    const user = process.env.SMTP_USER
+    const password = process.env.SMTP_PASSWORD
+    const from = process.env.EMAIL_FROM || user
+    if (!host || !from || ((user && !password) || (!user && password))) {
+      return {
+        ok: false,
+        error: 'Configuración SMTP incompleta: revisá SMTP_HOST, SMTP_USER, SMTP_PASSWORD y EMAIL_FROM',
+        esErrorTransitorio: false,
+      }
+    }
+
+    const { asunto, html, textoPlano } = construirPlantillaConfirmacionTurno(datos)
+
+    try {
+      const port = Number(process.env.SMTP_PORT || 587)
+      const transporter = nodemailer.createTransport({
+        host,
+        port,
+        secure: port === 465,
+        ...(user && password ? { auth: { user, pass: password } } : {}),
+      })
+      const info = await transporter.sendMail({
+        from,
+        to: datos.email.trim(),
+        subject: asunto,
+        html,
+        text: textoPlano,
+      })
+      return { ok: true, messageId: info.messageId, esErrorTransitorio: false }
+    } catch (error) {
+      const err = error as Error
+      const smtpError = error as Error & { responseCode?: number }
+      const esTransitorio =
+        err.name === 'AbortError' ||
+        (smtpError.responseCode !== undefined && smtpError.responseCode >= 400 && smtpError.responseCode < 500) ||
+        /network|timeout|ECONNRESET|ETIMEDOUT|ECONNECTION|ESOCKET|EDNS/i.test(err.message)
+      return {
+        ok: false,
+        error: err.message || 'Fallo de comunicación con el proveedor de correo',
+        esErrorTransitorio: esTransitorio,
+      }
+    }
+  }
+
   /**
    * Envía un recordatorio de turno médico al correo registrado del paciente.
    * Maneja errores transitorios (red/timeouts/5xx) y permanentes (formato de correo inválido).
@@ -310,80 +432,45 @@ export class EmailService {
     const { asunto, html, textoPlano } = construirPlantillaRecordatorio(datos)
 
     try {
-      // 2. Si existe un proveedor configurado (ej. Resend / SMTP), se podría invocar aquí.
-      // Por defecto, simulamos el procesamiento con latencia y verificación de conectividad.
-      const apiKey = process.env.RESEND_API_KEY
-
-      if (apiKey) {
-        const response = await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            from: process.env.EMAIL_FROM || 'SIGESMED <turnos@sigesmed.com>',
-            to: [datos.email.trim()],
-            subject: asunto,
-            html,
-            text: textoPlano,
-          }),
-        })
-
-        if (!response.ok) {
-          const status = response.status
-          const esTransitorio = status === 429 || status >= 500
-          let errorDetalle = `Error HTTP ${status} del proveedor de correo`
-          try {
-            const errorJson = await response.json()
-            if (errorJson?.message) errorDetalle = `${errorDetalle}: ${errorJson.message}`
-          } catch {
-            // Ignorar fallo de parseo de error
-          }
-
-          return {
-            ok: false,
-            error: errorDetalle,
-            esErrorTransitorio: esTransitorio,
-          }
-        }
-
-        const data = await response.json()
+      const host = process.env.SMTP_HOST
+      const user = process.env.SMTP_USER
+      const password = process.env.SMTP_PASSWORD
+      const from = process.env.EMAIL_FROM || user
+      if (!host || !from || ((user && !password) || (!user && password))) {
         return {
-          ok: true,
-          messageId: data?.id ?? `resend_${Date.now()}`,
+          ok: false,
+          error: 'Configuración SMTP incompleta para enviar el recordatorio',
           esErrorTransitorio: false,
         }
       }
 
-      // Modo estándar / Desarrollo / Simulación resiliente:
-      // Simulamos latencia de red y confirmación de recepción.
-      await new Promise((resolve) => setTimeout(resolve, 60))
-
-      // Mascarar email para registros seguros (sin exponer PII innecesaria en logs)
-      const partes = datos.email.split('@')
-      const emailAnonimo = partes[0].length > 2 
-        ? `${partes[0].slice(0, 2)}***@${partes[1] || ''}` 
-        : `***@${partes[1] || ''}`
-
-      console.log(
-        `[EMAIL-SERVICE] Recordatorio emitido exitosamente a ${emailAnonimo} para cita del ${datos.fecha} ${datos.hora}`
-      )
+      const port = Number(process.env.SMTP_PORT || 587)
+      const transporter = nodemailer.createTransport({
+        host,
+        port,
+        secure: port === 465,
+        ...(user && password ? { auth: { user, pass: password } } : {}),
+      })
+      const info = await transporter.sendMail({
+        from,
+        to: datos.email.trim(),
+        subject: asunto,
+        html,
+        text: textoPlano,
+      })
 
       return {
         ok: true,
-        messageId: `sim_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        messageId: info.messageId,
         esErrorTransitorio: false,
       }
     } catch (error) {
       const err = error as Error
+      const smtpError = error as Error & { responseCode?: number }
       const esTransitorio =
         err.name === 'AbortError' ||
-        err.message.includes('fetch') ||
-        err.message.includes('network') ||
-        err.message.includes('timeout') ||
-        err.message.includes('ECONNRESET') ||
-        err.message.includes('ETIMEDOUT')
+        (smtpError.responseCode !== undefined && smtpError.responseCode >= 400 && smtpError.responseCode < 500) ||
+        /network|timeout|ECONNRESET|ETIMEDOUT|ECONNECTION|ESOCKET|EDNS/i.test(err.message)
 
       return {
         ok: false,

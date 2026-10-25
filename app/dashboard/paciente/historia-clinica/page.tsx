@@ -274,6 +274,16 @@ export default async function HistoriaClinicaPage({
                         {turno.medico.nombre} {turno.medico.apellido}
                       </p>
                     </div>
+                    {turno.modalidad === 'PARTICULAR' && turno.pagos[0]?.estado === 'APROBADO' && (
+                      <div className="pt-1">
+                        <Link
+                          className="inline-block border border-slate-300 bg-white px-3 py-1.5 text-[10px] font-mono font-bold uppercase hover:bg-slate-50 transition-colors"
+                          href={`/dashboard/paciente/pagos/${turno.idTurno}`}
+                        >
+                          Ver Comprobante
+                        </Link>
+                      </div>
+                    )}
                   </li>
                 ))}
               </ul>

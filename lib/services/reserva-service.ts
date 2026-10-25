@@ -1,6 +1,8 @@
 // Confirma un turno disponible asociándolo al paciente autenticado con soporte de idempotencia y concurrencia (US-09 y US-18).
 import { prisma } from '@/lib/prisma'
+import { EmailService } from '@/lib/services/email-service'
 import { RecordatoriosService } from '@/lib/services/recordatorios-service'
+import { formatearFechaLegible } from '@/lib/utils/recordatorios-utils'
 
 export interface OpcionesConfirmacion {
   idempotencyKey?: string
@@ -133,12 +135,42 @@ export async function confirmarTurno(
   // La reserva y el recordatorio son operaciones independientes: cualquier error en la programación
   // se captura y no revierte ni afecta el éxito de la reserva.
   if (resultado.turno && !resultado.idempotent) {
+    const { turno } = resultado
+    try {
+      const envio = await EmailService.enviarConfirmacionTurno({
+        email: turno.paciente?.email ?? '',
+        pacienteNombre: `${turno.paciente?.nombre ?? ''} ${turno.paciente?.apellido ?? ''}`.trim(),
+        medicoNombre: `${turno.medico.nombre} ${turno.medico.apellido}`.trim(),
+        especialidad: turno.medico.especialidad,
+        fecha: formatearFechaLegible(turno.fecha),
+        hora: turno.hora,
+        consultorio: turno.medico.consultorio,
+      })
+
+      if (envio.ok) {
+        await prisma.turno.update({
+          where: { idTurno: turno.idTurno },
+          data: { confirmacionEnviadaAt: new Date() },
+        })
+      } else {
+        console.error(
+          `[RESERVA-SERVICE] No se pudo enviar la confirmación del turno ${turno.idTurno}:`,
+          envio.error
+        )
+      }
+    } catch (confirmationErr) {
+      console.error(
+        `[RESERVA-SERVICE] Error no bloqueante al enviar la confirmación del turno ${turno.idTurno}:`,
+        confirmationErr
+      )
+    }
+
     try {
       await RecordatoriosService.programarRecordatorio({
-        idTurno: resultado.turno.idTurno,
+        idTurno: turno.idTurno,
         idPaciente,
-        fechaTurno: resultado.turno.fecha,
-        horaTurno: resultado.turno.hora,
+        fechaTurno: turno.fecha,
+        horaTurno: turno.hora,
       })
     } catch (reminderErr) {
       console.error(

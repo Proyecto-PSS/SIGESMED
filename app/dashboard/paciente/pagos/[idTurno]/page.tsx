@@ -56,6 +56,9 @@ export default async function PagoTurnoPage({
       idTurno,
       idPaciente: paciente.idPaciente,
     },
+    include: {
+      comprobante: true,
+    },
     orderBy: { createdAt: 'desc' },
   })
 
@@ -88,6 +91,19 @@ export default async function PagoTurnoPage({
         motivoRechazo: pagoExistente.motivoRechazo,
         codigoError: pagoExistente.codigoError,
         aprobadoAt: pagoExistente.aprobadoAt?.toISOString() ?? null,
+        comprobante: pagoExistente.comprobante
+          ? {
+              idComprobante: pagoExistente.comprobante.idComprobante,
+              idPago: pagoExistente.comprobante.idPago,
+              numeroComprobante: pagoExistente.comprobante.numeroComprobante,
+              estado: pagoExistente.comprobante.estado,
+              nombreArchivo: pagoExistente.comprobante.nombreArchivo,
+              mimeType: pagoExistente.comprobante.mimeType,
+              tamanoBytes: pagoExistente.comprobante.tamanoBytes,
+              fechaEmision: pagoExistente.comprobante.fechaEmision.toISOString(),
+              errorGeneracion: pagoExistente.comprobante.errorGeneracion,
+            }
+          : null,
       }
     : null
 
@@ -97,6 +113,12 @@ export default async function PagoTurnoPage({
       turno={turnoDTO}
       pagoInicial={pagoDTO}
       tarifa={tarifa}
+      pacienteInfo={{
+        nombre: paciente.nombre || '',
+        apellido: paciente.apellido || '',
+        dni: (paciente as any).dni || '',
+      }}
     />
   )
 }
+

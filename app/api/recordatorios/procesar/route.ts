@@ -4,6 +4,8 @@ import { RecordatoriosService } from '@/lib/services/recordatorios-service'
 import { getCurrentUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
+export const dynamic = 'force-dynamic'
+
 interface RequestBody {
   idTurno?: string
   forzar?: boolean
@@ -107,10 +109,16 @@ export async function GET(request: Request) {
     const idTurno = searchParams.get('idTurno')
 
     if (!idTurno) {
-      return NextResponse.json(
-        { success: false, error: 'Se requiere el parámetro idTurno.' },
-        { status: 400 }
-      )
+      if (!verificarAutorizacionServicio(request)) {
+        return NextResponse.json({ success: false, error: 'No autorizado.' }, { status: 401 })
+      }
+
+      const resultado = await RecordatoriosService.procesarLoteRecordatorios()
+      return NextResponse.json({
+        success: true,
+        mensaje: 'Procesamiento programado de recordatorios completado.',
+        resultado,
+      })
     }
 
     const esServicio = verificarAutorizacionServicio(request)
