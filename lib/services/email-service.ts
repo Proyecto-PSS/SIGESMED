@@ -399,9 +399,11 @@ export class EmailService {
       return { ok: true, messageId: info.messageId, esErrorTransitorio: false }
     } catch (error) {
       const err = error as Error
+      const smtpError = error as Error & { responseCode?: number }
       const esTransitorio =
         err.name === 'AbortError' ||
-        /network|timeout|ECONNRESET|ETIMEDOUT|ECONNECTION|ESOCKET/i.test(err.message)
+        (smtpError.responseCode !== undefined && smtpError.responseCode >= 400 && smtpError.responseCode < 500) ||
+        /network|timeout|ECONNRESET|ETIMEDOUT|ECONNECTION|ESOCKET|EDNS/i.test(err.message)
       return {
         ok: false,
         error: err.message || 'Fallo de comunicación con el proveedor de correo',
@@ -430,80 +432,45 @@ export class EmailService {
     const { asunto, html, textoPlano } = construirPlantillaRecordatorio(datos)
 
     try {
-      // 2. Si existe un proveedor configurado (ej. Resend / SMTP), se podría invocar aquí.
-      // Por defecto, simulamos el procesamiento con latencia y verificación de conectividad.
-      const apiKey = process.env.RESEND_API_KEY
-
-      if (apiKey) {
-        const response = await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            from: process.env.EMAIL_FROM || 'SIGESMED <turnos@sigesmed.com>',
-            to: [datos.email.trim()],
-            subject: asunto,
-            html,
-            text: textoPlano,
-          }),
-        })
-
-        if (!response.ok) {
-          const status = response.status
-          const esTransitorio = status === 429 || status >= 500
-          let errorDetalle = `Error HTTP ${status} del proveedor de correo`
-          try {
-            const errorJson = await response.json()
-            if (errorJson?.message) errorDetalle = `${errorDetalle}: ${errorJson.message}`
-          } catch {
-            // Ignorar fallo de parseo de error
-          }
-
-          return {
-            ok: false,
-            error: errorDetalle,
-            esErrorTransitorio: esTransitorio,
-          }
-        }
-
-        const data = await response.json()
+      const host = process.env.SMTP_HOST
+      const user = process.env.SMTP_USER
+      const password = process.env.SMTP_PASSWORD
+      const from = process.env.EMAIL_FROM || user
+      if (!host || !from || ((user && !password) || (!user && password))) {
         return {
-          ok: true,
-          messageId: data?.id ?? `resend_${Date.now()}`,
+          ok: false,
+          error: 'Configuración SMTP incompleta para enviar el recordatorio',
           esErrorTransitorio: false,
         }
       }
 
-      // Modo estándar / Desarrollo / Simulación resiliente:
-      // Simulamos latencia de red y confirmación de recepción.
-      await new Promise((resolve) => setTimeout(resolve, 60))
-
-      // Mascarar email para registros seguros (sin exponer PII innecesaria en logs)
-      const partes = datos.email.split('@')
-      const emailAnonimo = partes[0].length > 2 
-        ? `${partes[0].slice(0, 2)}***@${partes[1] || ''}` 
-        : `***@${partes[1] || ''}`
-
-      console.log(
-        `[EMAIL-SERVICE] Recordatorio emitido exitosamente a ${emailAnonimo} para cita del ${datos.fecha} ${datos.hora}`
-      )
+      const port = Number(process.env.SMTP_PORT || 587)
+      const transporter = nodemailer.createTransport({
+        host,
+        port,
+        secure: port === 465,
+        ...(user && password ? { auth: { user, pass: password } } : {}),
+      })
+      const info = await transporter.sendMail({
+        from,
+        to: datos.email.trim(),
+        subject: asunto,
+        html,
+        text: textoPlano,
+      })
 
       return {
         ok: true,
-        messageId: `sim_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        messageId: info.messageId,
         esErrorTransitorio: false,
       }
     } catch (error) {
       const err = error as Error
+      const smtpError = error as Error & { responseCode?: number }
       const esTransitorio =
         err.name === 'AbortError' ||
-        err.message.includes('fetch') ||
-        err.message.includes('network') ||
-        err.message.includes('timeout') ||
-        err.message.includes('ECONNRESET') ||
-        err.message.includes('ETIMEDOUT')
+        (smtpError.responseCode !== undefined && smtpError.responseCode >= 400 && smtpError.responseCode < 500) ||
+        /network|timeout|ECONNRESET|ETIMEDOUT|ECONNECTION|ESOCKET|EDNS/i.test(err.message)
 
       return {
         ok: false,
