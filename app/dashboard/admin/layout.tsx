@@ -10,7 +10,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <LayoutStaff
       inicio={BASE}
-      secciones={[{ href: BASE, label: 'Panel de administración', exacto: true }]}
+      secciones={[
+        { href: BASE, label: 'Panel de administrador', exacto: true },
+        { href: `${BASE}/gestion`, label: 'Gestión' },
+      ]}
       nombre={nombre}
       rol="Administración"
       etiqueta="Secciones de administración"

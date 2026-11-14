@@ -3,6 +3,23 @@
 import { useState, useEffect, useCallback, type FormEvent } from 'react'
 import styles from './turnos.module.css'
 import type { TurnoAdminDTO } from '@/lib/services/admin-turnos-service'
+import {
+  MOTIVOS_CANCELACION_ADMINISTRATIVA,
+  type MotivoCancelacionAdministrativa,
+} from '@/lib/utils/admin-turnos-utils'
+
+export interface MedicoFiltro {
+  idMedico: string
+  nombre: string
+  apellido: string
+}
+
+// Atajos de estado que filtran al instante, sin tener que abrir el selector.
+const ETIQUETAS_RAPIDAS = [
+  { value: '', label: 'Todos' },
+  { value: 'CONFIRMADO', label: 'Confirmados' },
+  { value: 'CANCELADO', label: 'Cancelados' },
+]
 
 const ESTADOS_DISPONIBLES = [
   { value: '', label: 'Todos los estados' },
@@ -13,7 +30,7 @@ const ESTADOS_DISPONIBLES = [
   { value: 'AUSENTE', label: 'Ausente' },
 ]
 
-export default function GestionTurnosAdmin() {
+export default function GestionTurnosAdmin({ medicos }: { medicos: MedicoFiltro[] }) {
   const [turnos, setTurnos] = useState<TurnoAdminDTO[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -21,11 +38,13 @@ export default function GestionTurnosAdmin() {
 
   // Filtros
   const [pacienteFiltro, setPacienteFiltro] = useState('')
+  const [medicoFiltro, setMedicoFiltro] = useState('')
   const [fechaFiltro, setFechaFiltro] = useState('')
   const [estadoFiltro, setEstadoFiltro] = useState('')
 
   // Modales
   const [turnoParaCancelar, setTurnoParaCancelar] = useState<TurnoAdminDTO | null>(null)
+  const [motivoCancelacion, setMotivoCancelacion] = useState<MotivoCancelacionAdministrativa | ''>('')
   const [isCancelling, setIsCancelling] = useState(false)
 
   const [turnoParaNotificar, setTurnoParaNotificar] = useState<TurnoAdminDTO | null>(null)
@@ -45,16 +64,18 @@ export default function GestionTurnosAdmin() {
   }
 
   const cargarTurnos = useCallback(
-    async (filtros?: { paciente?: string; fecha?: string; estado?: string }) => {
+    async (filtros?: { paciente?: string; medico?: string; fecha?: string; estado?: string }) => {
       setIsLoading(true)
       setError(null)
       try {
         const queryParams = new URLSearchParams()
         const p = filtros?.paciente ?? pacienteFiltro
+        const m = filtros?.medico ?? medicoFiltro
         const f = filtros?.fecha ?? fechaFiltro
         const e = filtros?.estado ?? estadoFiltro
 
         if (p.trim()) queryParams.set('paciente', p.trim())
+        if (m) queryParams.set('medico', m)
         if (f.trim()) queryParams.set('fecha', f.trim())
         if (e.trim()) queryParams.set('estado', e.trim())
 
@@ -72,7 +93,7 @@ export default function GestionTurnosAdmin() {
         setIsLoading(false)
       }
     },
-    [pacienteFiltro, fechaFiltro, estadoFiltro]
+    [pacienteFiltro, medicoFiltro, fechaFiltro, estadoFiltro]
   )
 
   useEffect(() => {
@@ -86,14 +107,20 @@ export default function GestionTurnosAdmin() {
 
   const handleResetFiltros = () => {
     setPacienteFiltro('')
+    setMedicoFiltro('')
     setFechaFiltro('')
     setEstadoFiltro('')
-    cargarTurnos({ paciente: '', fecha: '', estado: '' })
+    cargarTurnos({ paciente: '', medico: '', fecha: '', estado: '' })
   }
 
   // Cancelación administrativa
+  const abrirModalCancelacion = (turno: TurnoAdminDTO) => {
+    setMotivoCancelacion('')
+    setTurnoParaCancelar(turno)
+  }
+
   const handleConfirmarCancelacion = async () => {
-    if (!turnoParaCancelar) return
+    if (!turnoParaCancelar || !motivoCancelacion) return
     setIsCancelling(true)
     setError(null)
     setSuccess(null)
@@ -101,6 +128,8 @@ export default function GestionTurnosAdmin() {
     try {
       const res = await fetch(`/api/admin/turnos/${turnoParaCancelar.idTurno}/cancelar`, {
         method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ motivo: motivoCancelacion }),
       })
       const data = await res.json()
 
@@ -114,14 +143,14 @@ export default function GestionTurnosAdmin() {
             ? {
                 ...t,
                 estado: 'CANCELADO',
-                motivoCancelacion: 'Cancelación administrativa por modificación de la agenda médica',
+                motivoCancelacion: data.turno?.motivoCancelacion ?? motivoCancelacion,
                 estadoNotificacionCancelacion: 'PENDIENTE',
               }
             : t
         )
       )
 
-      setSuccess('El turno fue cancelado correctamente. Ahora puede notificar al paciente afectado.')
+      setSuccess('Turno cancelado exitosamente. Ahora podés notificar al paciente.')
       setTurnoParaCancelar(null)
     } catch (err: any) {
       setError(err.message || 'Error al procesar la cancelación.')
@@ -296,6 +325,25 @@ export default function GestionTurnosAdmin() {
         </div>
 
         <div className={styles.filterGroup}>
+          <label htmlFor="filtro-medico" className={styles.filterLabel}>
+            Médico
+          </label>
+          <select
+            id="filtro-medico"
+            className={styles.filterSelect}
+            value={medicoFiltro}
+            onChange={(e) => setMedicoFiltro(e.target.value)}
+          >
+            <option value="">Todos los médicos</option>
+            {medicos.map((medico) => (
+              <option key={medico.idMedico} value={medico.idMedico}>
+                {medico.apellido}, {medico.nombre}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className={styles.filterGroup}>
           <label htmlFor="filtro-fecha" className={styles.filterLabel}>
             Fecha exacta
           </label>
@@ -339,6 +387,21 @@ export default function GestionTurnosAdmin() {
           Limpiar filtros
         </button>
       </form>
+
+      <div className={styles.chips} role="group" aria-label="Filtrar por estado">
+        {ETIQUETAS_RAPIDAS.map((etiqueta) => (
+          <button
+            key={etiqueta.value}
+            type="button"
+            aria-pressed={estadoFiltro === etiqueta.value}
+            className={`${styles.chip} ${estadoFiltro === etiqueta.value ? styles.chipActivo : ''}`}
+            onClick={() => setEstadoFiltro(etiqueta.value)}
+            disabled={isLoading}
+          >
+            {etiqueta.label}
+          </button>
+        ))}
+      </div>
 
       {/* Tabla de Resultados */}
       <div className={styles.tableContainer}>
@@ -417,7 +480,7 @@ export default function GestionTurnosAdmin() {
                     {turno.estado === 'CONFIRMADO' && (
                       <button
                         type="button"
-                        onClick={() => setTurnoParaCancelar(turno)}
+                        onClick={() => abrirModalCancelacion(turno)}
                         className={styles.btnActionCancel}
                       >
                         Cancelar turno
@@ -469,9 +532,8 @@ export default function GestionTurnosAdmin() {
             </h3>
 
             <div className={styles.modalWarning}>
-              <strong>Atención:</strong> Se cancelará el turno debido a una modificación de la agenda
-              médica. El turno permanecerá asociado al paciente para permitir su posterior notificación y
-              no volverá a estar disponible para reserva.
+              <strong>Atención:</strong> El turno permanecerá asociado al paciente para permitir su
+              posterior notificación y no volverá a estar disponible para reserva.
             </div>
 
             <div className={styles.modalInfoGrid}>
@@ -492,6 +554,28 @@ export default function GestionTurnosAdmin() {
               </span>
             </div>
 
+            <div className={`${styles.filterGroup} ${styles.modalCampo}`}>
+              <label htmlFor="motivo-cancelacion" className={styles.filterLabel}>
+                Motivo de la cancelación
+              </label>
+              <select
+                id="motivo-cancelacion"
+                className={styles.filterSelect}
+                value={motivoCancelacion}
+                onChange={(e) => setMotivoCancelacion(e.target.value as MotivoCancelacionAdministrativa)}
+                disabled={isCancelling}
+              >
+                <option value="" disabled>
+                  Elegí un motivo
+                </option>
+                {MOTIVOS_CANCELACION_ADMINISTRATIVA.map((motivo) => (
+                  <option key={motivo} value={motivo}>
+                    {motivo}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div className={styles.modalActions}>
               <button
                 type="button"
@@ -505,7 +589,7 @@ export default function GestionTurnosAdmin() {
                 type="button"
                 onClick={handleConfirmarCancelacion}
                 className={styles.modalBtnDanger}
-                disabled={isCancelling}
+                disabled={isCancelling || !motivoCancelacion}
               >
                 {isCancelling ? 'Cancelando...' : 'Confirmar cancelación'}
               </button>

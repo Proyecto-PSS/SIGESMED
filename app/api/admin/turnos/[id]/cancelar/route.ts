@@ -1,9 +1,19 @@
 import { NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { AdminTurnosService } from '@/lib/services/admin-turnos-service'
+import { esMotivoCancelacionValido } from '@/lib/utils/admin-turnos-utils'
+
+async function leerMotivo(request: Request): Promise<unknown> {
+  try {
+    const body = await request.json()
+    return body?.motivo
+  } catch {
+    return undefined
+  }
+}
 
 export async function PUT(
-  _request: Request,
+  request: Request,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -23,7 +33,15 @@ export async function PUT(
       return NextResponse.json({ error: 'Identificador del turno no proporcionado.' }, { status: 400 })
     }
 
-    const resultado = await AdminTurnosService.cancelarTurnoAdministrativo(id)
+    const motivo = await leerMotivo(request)
+    if (!esMotivoCancelacionValido(motivo)) {
+      return NextResponse.json(
+        { error: 'Elegí un motivo de cancelación válido.', code: 'INVALID_MOTIVO' },
+        { status: 400 }
+      )
+    }
+
+    const resultado = await AdminTurnosService.cancelarTurnoAdministrativo(id, motivo)
     return NextResponse.json(resultado, { status: 200 })
   } catch (error: any) {
     const status = error.statusCode || 500

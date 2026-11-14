@@ -1,0 +1,678 @@
+/* Panel de métricas (RF-15). Usa los tokens del portal; los colores de datos se definen
+   en PanelMetricas.tsx (paleta validada para daltonismo y contraste sobre blanco). */
+.panel {
+  --linea: #e4e4dd;
+  --tinta-tenue: #6b7b80;
+  --critico: #b42318;
+  --critico-fondo: #fff1f0;
+
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+/* ---------- Banner con el título y los filtros ---------- */
+.banner {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px 28px;
+  overflow: hidden;
+  padding: 36px 32px;
+  border-radius: 18px;
+  /* Foto de fondo (public/images/admin/banner-admin.jpeg) degradada con los colores del portal:
+     casi opaca a la izquierda para que el título se lea, más transparente hacia la derecha. */
+  background:
+    linear-gradient(
+      90deg,
+      rgba(27, 47, 54, 0.97) 0%,
+      rgba(27, 47, 54, 0.9) 32%,
+      rgba(34, 82, 91, 0.7) 62%,
+      rgba(43, 122, 135, 0.78) 100%
+    ),
+    url('/images/admin/banner-admin.jpeg') center 35% / cover no-repeat,
+    #1b2f36;
+  box-shadow: 0 18px 40px -24px rgba(27, 47, 54, 0.7);
+  color: #ffffff;
+}
+
+.eyebrow {
+  color: #a9dde3;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.titulo {
+  margin: 6px 0 0;
+  color: #ffffff;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.periodo {
+  margin: 8px 0 0;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 13px;
+}
+
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 18px;
+}
+
+.chips {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.chip {
+  height: 30px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.85);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.chip:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+}
+
+.chipActivo,
+.chipActivo:hover {
+  background: #ffffff;
+  color: var(--color-tinta);
+}
+
+.rango {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.campo input {
+  height: 38px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--color-tinta);
+  font: inherit;
+  font-size: 13px;
+}
+
+.campo input:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(169, 221, 227, 0.6);
+}
+
+.botonAplicar {
+  height: 38px;
+  padding: 0 18px;
+  border: none;
+  border-radius: 10px;
+  background: #ffffff;
+  color: var(--color-tinta);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.botonAplicar:hover {
+  background: #e6f4f5;
+}
+
+.botonAplicar:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.alertaError {
+  margin: 0;
+  padding: 12px 16px;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.cargando,
+.vacio {
+  margin: 0;
+  padding: 32px 16px;
+  color: var(--tinta-tenue);
+  font-size: 13px;
+  text-align: center;
+}
+
+.contenido {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  transition: opacity 0.2s ease;
+}
+
+.actualizando {
+  opacity: 0.55;
+}
+
+/* ---------- Ícono con fondo del color de acento ---------- */
+.icono {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  place-items: center;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--acento) 14%, #ffffff);
+  color: var(--acento);
+}
+
+/* ---------- Indicadores ---------- */
+.indicadores {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.indicador {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: hidden;
+  padding: 20px 20px 18px;
+  border: 1px solid var(--linea);
+  border-radius: 16px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--acento) 6%, #ffffff) 0%, #ffffff 60%);
+  box-shadow: 0 1px 3px rgba(27, 47, 54, 0.05);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.indicador::before {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 4px;
+  background: var(--acento);
+  content: "";
+}
+
+.indicador:hover {
+  box-shadow: 0 12px 24px -16px rgba(27, 47, 54, 0.35);
+  transform: translateY(-2px);
+}
+
+.indicadorAlerta {
+  border-color: #f5c2bd;
+  background: linear-gradient(180deg, var(--critico-fondo) 0%, #ffffff 80%);
+}
+
+.indicadorCabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.indicadorEtiqueta {
+  padding-top: 4px;
+  color: var(--color-tinta-suave);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.indicadorValor {
+  color: var(--color-tinta);
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-size: 32px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.indicadorDetalle {
+  color: var(--tinta-tenue);
+  font-size: 12px;
+}
+
+.indicadorAlerta .indicadorDetalle {
+  color: var(--critico);
+  font-weight: 600;
+}
+
+/* ---------- Tarjetas ---------- */
+.graficos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.tarjeta {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 22px 24px 24px;
+  border: 1px solid var(--linea);
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(27, 47, 54, 0.05);
+}
+
+.tarjetaEncabezado {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f1f1ec;
+}
+
+.tarjetaTitulo {
+  margin: 0;
+  color: var(--color-tinta);
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.tarjetaDetalle {
+  margin: 3px 0 0;
+  color: var(--tinta-tenue);
+  font-size: 12px;
+}
+
+/* ---------- Barras horizontales ---------- */
+.barras {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.barraFila {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.barraCabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.barraEtiqueta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-tinta);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.barraValor {
+  color: var(--color-tinta);
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Contenedor de cada marca: amplía la zona de hover y aloja el tooltip. */
+.marca {
+  position: relative;
+  outline: none;
+}
+
+.marca:focus-visible {
+  border-radius: 6px;
+  box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px var(--color-primario);
+}
+
+/* La pista es un tono claro del mismo color de la barra. */
+.pista {
+  display: block;
+  height: 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color) 13%, #ffffff);
+}
+
+.barra {
+  display: block;
+  width: calc(100% * var(--proporcion));
+  height: 100%;
+  border-radius: 999px;
+  background: var(--color);
+  transition: width 0.5s ease, filter 0.15s ease;
+}
+
+.marca:hover .barra,
+.marca:focus-visible .barra {
+  filter: brightness(0.9);
+}
+
+.etiquetaCritico {
+  padding: 2px 8px;
+  border: 1px solid #f5c2bd;
+  border-radius: 999px;
+  background: var(--critico-fondo);
+  color: var(--critico);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+/* ---------- Tooltip ---------- */
+.tooltip {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 0;
+  z-index: 5;
+  display: flex;
+  min-width: 170px;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--color-tinta);
+  box-shadow: 0 10px 24px -8px rgba(27, 47, 54, 0.45);
+  color: #ffffff;
+  font-size: 12px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(4px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.tooltip strong {
+  margin-bottom: 2px;
+  font-size: 12px;
+}
+
+.tooltipFila {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  color: rgba(255, 255, 255, 0.82);
+  font-variant-numeric: tabular-nums;
+}
+
+.marca:hover .tooltip,
+.marca:focus-visible .tooltip {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ---------- Asistencia (dona) ---------- */
+.asistencia {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 24px 32px;
+}
+
+.dona {
+  position: relative;
+  width: 170px;
+  height: 170px;
+  flex: 0 0 170px;
+}
+
+.dona svg {
+  width: 100%;
+  height: 100%;
+}
+
+.dona circle {
+  transition: stroke-dasharray 0.5s ease;
+}
+
+.donaCentro {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.donaValor {
+  color: var(--color-tinta);
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-size: 34px;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.donaTexto {
+  margin-top: 4px;
+  color: var(--tinta-tenue);
+  font-size: 12px;
+}
+
+.leyenda {
+  display: flex;
+  min-width: 200px;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.leyendaItem {
+  display: grid;
+  grid-template-columns: 12px 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fafaf7;
+  font-size: 13px;
+}
+
+.leyendaMuestra {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+}
+
+.leyendaNombre {
+  color: var(--color-tinta-suave);
+  font-weight: 600;
+}
+
+.leyendaValor {
+  color: var(--color-tinta);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.leyendaShare {
+  min-width: 40px;
+  color: var(--tinta-tenue);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.leyendaTotal {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 12px 0;
+  color: var(--tinta-tenue);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ---------- Pagos ---------- */
+.pagos {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.destacado {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.destacadoValor {
+  color: var(--color-tinta);
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-size: 38px;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.destacadoTexto {
+  color: var(--color-tinta-suave);
+  font-size: 13px;
+}
+
+/* Barra de estados: cada parte ocupa su proporción, separadas por 2px. */
+.medidor {
+  display: flex;
+  gap: 2px;
+  height: 14px;
+}
+
+.medidorParte {
+  min-width: 6px;
+  flex-basis: 0;
+  border-radius: 4px;
+  transition: filter 0.15s ease;
+}
+
+.medidorParte:first-child {
+  border-radius: 999px 4px 4px 999px;
+}
+
+.medidorParte:last-child {
+  border-radius: 4px 999px 999px 4px;
+}
+
+.medidorParte:only-child {
+  border-radius: 999px;
+}
+
+.medidorParte:hover {
+  filter: brightness(0.9);
+}
+
+.estadosPago {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.estadoPago {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--acento) 22%, #ffffff);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--acento) 7%, #ffffff);
+}
+
+.estadoIcono {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--acento);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.estadoNombre {
+  color: var(--color-tinta-suave);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.estadoValor {
+  color: var(--color-tinta);
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1100px) {
+  .indicadores {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .graficos {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .banner {
+    padding: 22px 20px;
+  }
+
+  .indicadores,
+  .estadosPago {
+    grid-template-columns: 1fr;
+  }
+
+  .rango {
+    flex-wrap: wrap;
+  }
+
+  .asistencia {
+    justify-content: center;
+  }
+}

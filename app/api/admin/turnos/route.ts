@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { AdminTurnosService } from '@/lib/services/admin-turnos-service'
 import { EstadoTurno } from '@/lib/generated/prisma/client'
+import { normalizarFiltroMedico } from '@/lib/utils/admin-turnos-utils'
 
 export async function GET(request: Request) {
   try {
@@ -18,6 +19,7 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url)
     const paciente = searchParams.get('paciente') || undefined
+    const idMedico = normalizarFiltroMedico(searchParams.get('medico'))
     const fecha = searchParams.get('fecha') || undefined
     const estadoParam = searchParams.get('estado') || undefined
     const pageParam = searchParams.get('page')
@@ -39,6 +41,7 @@ export async function GET(request: Request) {
 
     const resultado = await AdminTurnosService.consultarTurnos({
       paciente,
+      idMedico,
       fecha,
       estado,
       page,
