@@ -5,6 +5,7 @@ const BASE = '/dashboard/paciente'
 const SECCIONES: SeccionPortal[] = [
   { href: BASE, label: 'Inicio', exacto: true },
   { href: `${BASE}/mis-citas`, label: 'Mis turnos', activoEn: [`${BASE}/mis-citas`, `${BASE}/pagos`] },
+  { href: `${BASE}/mis-turnos-vacunacion`, label: 'Vacunación' },
   { href: `${BASE}/historia-clinica`, label: 'Historia clínica' },
 ]
 

@@ -30,6 +30,14 @@ export const ACCESOS: Acceso[] = [
     imagen: '/images/paciente/estetoscopio.webp',
   },
   {
+    href: '/dashboard/paciente/mis-turnos-vacunacion',
+    bajada: 'Vacunatorio',
+    titulo: 'Vacunación',
+    descripcion: 'Consultá y gestioná tus turnos de vacunación.',
+    boton: 'Ver mis turnos de vacunación',
+    imagen: '/images/paciente/turnos-calendario.jpg',
+  },
+  {
     href: '/dashboard/paciente/historia-clinica',
     bajada: 'Mi ficha médica',
     titulo: 'Historia Clínica',

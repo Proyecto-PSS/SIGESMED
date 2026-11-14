@@ -276,6 +276,25 @@ model TurnoVacunacion {
   @@map("turnos_vacunacion")
 }
 
+// Snapshot inmutable de cada cancelación realizada por un paciente.
+model CancelacionTurnoVacunacion {
+  idCancelacion      String   @id @default(cuid()) @map("id_cancelacion")
+  idTurnoVacunacion  String   @map("id_turno_vacunacion")
+  idPaciente         String   @map("id_paciente")
+  idEnfermero        String   @map("id_enfermero")
+  idVacuna           String   @map("id_vacuna")
+  idLote             String?  @map("id_lote")
+  nombreVacuna       String   @map("nombre_vacuna")
+  fecha              DateTime @db.Date
+  hora               String   @db.VarChar(5)
+  motivo             String
+  canceladoAt        DateTime @default(now()) @map("cancelado_at") @db.Timestamptz(3)
+
+  @@index([idPaciente, canceladoAt])
+  @@index([idTurnoVacunacion, canceladoAt])
+  @@map("cancelaciones_turnos_vacunacion")
+}
+
 model RecordatorioTurno {
   idRecordatorio   String             @id @default(cuid()) @map("id_recordatorio")
   idTurno          String             @map("id_turno")
