@@ -132,21 +132,27 @@ describe('RF-15: pagos realizados', () => {
 })
 
 describe('RF-15: stock de vacunas', () => {
-  it('marca como críticas las vacunas con stock menor o igual al umbral', () => {
+  it('marca con stock bajo las vacunas por debajo de su umbral y las ordena de menor a mayor stock', () => {
     const resultado = clasificarStockVacunas([
-      { idVacuna: 'v1', nombre: 'Gripe', stock: 40 },
-      { idVacuna: 'v2', nombre: 'Hepatitis B', stock: 2 },
-      { idVacuna: 'v3', nombre: 'Tétanos', stock: 0 },
-      { idVacuna: 'v4', nombre: 'Sarampión', stock: 3 },
+      { idVacuna: 'v1', nombre: 'Gripe', stock: 40, umbralAlerta: 10 },
+      { idVacuna: 'v2', nombre: 'Hepatitis B', stock: 9, umbralAlerta: 10 },
+      { idVacuna: 'v3', nombre: 'Tétanos', stock: 0, umbralAlerta: 10 },
+      { idVacuna: 'v4', nombre: 'Sarampión', stock: 10, umbralAlerta: 10 },
     ])
     assert.deepEqual(
-      resultado.map((v) => [v.nombre, v.critico]),
+      resultado.map((v) => [v.nombre, v.stockBajo]),
       [['Tétanos', true], ['Hepatitis B', true], ['Sarampión', false], ['Gripe', false]]
     )
   })
 
-  it('permite cambiar el umbral', () => {
-    const [vacuna] = clasificarStockVacunas([{ idVacuna: 'v1', nombre: 'Gripe', stock: 5 }], 5)
-    assert.equal(vacuna.critico, true)
+  it('respeta el umbral propio de cada vacuna', () => {
+    const resultado = clasificarStockVacunas([
+      { idVacuna: 'v1', nombre: 'Gripe', stock: 15, umbralAlerta: 20 },
+      { idVacuna: 'v2', nombre: 'Rabia', stock: 3, umbralAlerta: 2 },
+    ])
+    assert.deepEqual(
+      resultado.map((v) => [v.nombre, v.stockBajo]),
+      [['Rabia', false], ['Gripe', true]]
+    )
   })
 })

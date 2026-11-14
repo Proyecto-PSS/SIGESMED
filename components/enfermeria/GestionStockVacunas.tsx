@@ -6,6 +6,7 @@ export interface VacunaItem {
   idVacuna: string
   nombre: string
   stockDisponible: number
+  umbralAlerta: number
   turnosComprometidos: number
   lotes: {
     idLote: string

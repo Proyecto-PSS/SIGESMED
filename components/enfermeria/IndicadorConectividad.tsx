@@ -1,8 +1,15 @@
 'use client'
 
 import React, { useEffect, useState, useCallback } from 'react'
+import styles from './panel-enfermeria.module.css'
 
 export type EstadoConexion = 'online' | 'offline' | 'reconnecting'
+
+const ESTADOS: Record<EstadoConexion, { texto: string; clase: string }> = {
+  online: { texto: 'En línea', clase: styles.conexionOnline },
+  reconnecting: { texto: 'Reconectando…', clase: styles.conexionReconectando },
+  offline: { texto: 'Sin conexión (offline)', clase: styles.conexionOffline },
+}
 
 interface IndicadorConectividadProps {
   onEstadoChange?: (estado: EstadoConexion) => void
@@ -89,24 +96,12 @@ export default function IndicadorConectividad({
     }
   }, [forzarVerificacion, verificarServidor])
 
+  const { texto, clase } = ESTADOS[estado]
+
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      className="inline-flex items-center gap-1.5 border border-black bg-white px-3 py-1.5 text-xs font-mono font-bold text-black shadow-sm"
-    >
-      <span className="flex items-center gap-1.5">
-        <span className="inline-block text-sm leading-none">
-          {estado === 'online' ? '●' : estado === 'reconnecting' ? '◐' : '○'}
-        </span>
-        <span>
-          {estado === 'online'
-            ? '[ ONLINE - NODO LOCAL SINCRONIZADO ]'
-            : estado === 'reconnecting'
-              ? 'RECONECTANDO - SINCRONIZANDO'
-              : 'OFFLINE - MODO BUFFER LOCAL'}
-        </span>
-      </span>
+    <div role="status" aria-live="polite" className={`${styles.conexion} ${clase}`}>
+      <span className={styles.conexionPunto} aria-hidden="true" />
+      <span>{texto}</span>
 
       {estado === 'offline' && (
         <button
@@ -115,10 +110,10 @@ export default function IndicadorConectividad({
             setEstado('reconnecting')
             verificarServidor()
           }}
-          className="ml-1 text-[11px] underline text-black hover:text-slate-600 font-bold focus:outline-none"
-          title="Reintentar verificación con el servidor"
+          className={styles.conexionReintentar}
+          title="Volver a comprobar la conexión con el servidor"
         >
-          [Reintentar]
+          Reintentar
         </button>
       )}
     </div>

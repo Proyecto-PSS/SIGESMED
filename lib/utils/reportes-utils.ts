@@ -2,9 +2,6 @@
 // No accede a la base de datos, así se puede testear de forma aislada.
 import { parseFechaFiltro } from './admin-turnos-utils.ts'
 
-/** Stock a partir del cual una vacuna se considera crítica (mismo criterio que el panel de enfermería). */
-export const UMBRAL_STOCK_CRITICO = 2
-
 export const DIAS_RANGO_PREDETERMINADO = 30
 
 /** Argentina no tiene horario de verano: siempre UTC-3. */
@@ -179,15 +176,18 @@ export interface StockVacuna {
   idVacuna: string
   nombre: string
   stock: number
-  critico: boolean
+  umbralAlerta: number
+  stockBajo: boolean
 }
 
-/** Marca las vacunas en stock crítico y las ordena para que las más urgentes queden primero. */
+/**
+ * Marca las vacunas por debajo de su propio umbral de alerta (mismo criterio que el inventario
+ * de enfermería) y las ordena para que las más urgentes queden primero.
+ */
 export function clasificarStockVacunas(
-  vacunas: { idVacuna: string; nombre: string; stock: number }[],
-  umbral: number = UMBRAL_STOCK_CRITICO
+  vacunas: { idVacuna: string; nombre: string; stock: number; umbralAlerta: number }[]
 ): StockVacuna[] {
   return vacunas
-    .map((v) => ({ ...v, critico: v.stock <= umbral }))
+    .map((v) => ({ ...v, stockBajo: v.stock < v.umbralAlerta }))
     .sort((a, b) => a.stock - b.stock || a.nombre.localeCompare(b.nombre, 'es'))
 }

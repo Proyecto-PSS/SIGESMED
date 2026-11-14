@@ -1,21 +1,47 @@
 'use client'
 
 import React, { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
+import { nivelStock } from '@/lib/utils/inventario-vacunas'
+import ui from '@/components/paciente/ui/ui.module.css'
 import IndicadorConectividad, { EstadoConexion } from './IndicadorConectividad'
 import type { VacunaItem } from './GestionStockVacunas'
 import type { TurnoVacunacionItem, PacienteItem } from './GestionTurnosVacunacion'
+import styles from './panel-enfermeria.module.css'
 
-interface PanelEnfermeriaProps {
-  enfermera: {
-    id: string
-    nombre: string
-    apellido: string
-    matricula?: string
-  }
-  userButtonSlot?: React.ReactNode
+const FILTROS_TURNO = [
+  ['TODOS', 'Todos'],
+  ['CONFIRMADO', 'En espera'],
+  ['APLICADO', 'Aplicados'],
+  ['DISPONIBLE', 'Libres'],
+  ['CANCELADO', 'Cancelados'],
+] as const
+
+const ESTADOS_TURNO: Record<string, { texto: string; clase: string }> = {
+  CONFIRMADO: { texto: 'En espera', clase: styles.estadoEspera },
+  APLICADO: { texto: '✓ Aplicada', clase: styles.estadoAplicada },
+  DISPONIBLE: { texto: 'Libre', clase: styles.estadoLibre },
+  CANCELADO: { texto: 'Cancelado', clase: styles.estadoCancelado },
 }
 
-export default function PanelEnfermeria({ enfermera, userButtonSlot }: PanelEnfermeriaProps) {
+const NIVELES_STOCK = {
+  CRITICO: { icono: '▲', clase: styles.stockCritico },
+  BAJO: { icono: '!', clase: styles.stockBajo },
+  NORMAL: { icono: '✓', clase: styles.stockNormal },
+} as const
+
+function fechaDeHoy(): string {
+  const texto = new Intl.DateTimeFormat('es-AR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'America/Argentina/Buenos_Aires' }).format(new Date())
+  return texto.charAt(0).toUpperCase() + texto.slice(1)
+}
+
+function vencimientoCorto(fecha: string): string {
+  const [anio, mes] = fecha.slice(0, 10).split('-')
+  return `${mes}/${anio}`
+}
+
+// Pantalla "Turnos en sala" de enfermería (US-19 / US-20). El nombre de la enfermera lo muestra la barra superior.
+export default function PanelEnfermeria() {
   const [estadoConexion, setEstadoConexion] = useState<EstadoConexion>('online')
   const [forzarVerificacion, setForzarVerificacion] = useState<boolean>(false)
 
@@ -91,7 +117,7 @@ export default function PanelEnfermeria({ enfermera, userButtonSlot }: PanelEnfe
   // KPIs
   const dosisTotales = vacunas.reduce((acc, v) => acc + (v.stockDisponible || 0), 0)
   const aplicadasHoy = turnos.filter((t) => t.estado === 'APLICADO').length
-  const alertasCriticas = vacunas.filter((v) => v.stockDisponible <= 2).length
+  const alertasCriticas = vacunas.filter((v) => nivelStock(v.stockDisponible, v.umbralAlerta) !== 'NORMAL').length
   const turnosPendientes = turnos.filter((t) => t.estado === 'CONFIRMADO').length
 
   // Filtrado de turnos
@@ -249,225 +275,158 @@ export default function PanelEnfermeria({ enfermera, userButtonSlot }: PanelEnfe
     }
   }
 
+  const reconectar = () => {
+    setForzarVerificacion(true)
+    setTimeout(() => setForzarVerificacion(false), 1000)
+    cargarDatos()
+  }
+
+  const contarTurnos = (estado: string) =>
+    estado === 'TODOS' ? turnos.length : turnos.filter((t) => t.estado === estado).length
+
   return (
-    <div className="space-y-6">
-      {/* --------------------------------------------------------------------- */}
-      {/* HEADER SUPERIOR (Wireframe US-20 web.png) */}
-      {/* --------------------------------------------------------------------- */}
-      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+    <div className={styles.panel}>
+      {/* Encabezado: título del día, estado de la conexión y actualizar */}
+      <header className={styles.encabezado}>
         <div>
+          <span className={styles.eyebrow}>Vacunatorio</span>
+          <h1 className={styles.titulo}>Turnos en sala</h1>
+          <p className={styles.fecha} suppressHydrationWarning>
+            {fechaDeHoy()}
+          </p>
+        </div>
+        <div className={styles.encabezadoAcciones}>
           <IndicadorConectividad
             onEstadoChange={(nuevoEstado) => setEstadoConexion(nuevoEstado)}
             forzarVerificacion={forzarVerificacion}
           />
+          <button type="button" onClick={cargarDatos} disabled={cargando} className={`${ui.botonSecundario} ${ui.botonChico}`}>
+            {cargando ? 'Actualizando…' : '↻ Actualizar'}
+          </button>
         </div>
-
-        {/* Nombre y avatar: si no se pasa userButtonSlot, los muestra la barra superior del portal. */}
-        {userButtonSlot && (
-          <div className="flex items-center gap-4 self-end sm:self-auto">
-            <div className="text-right">
-              <span className="font-mono font-bold text-xs uppercase tracking-wider text-slate-900 block leading-tight">
-                ENF. {enfermera.nombre} {enfermera.apellido}
-              </span>
-              <span className="font-mono text-[10px] text-slate-500 uppercase tracking-widest block mt-0.5">
-                VACUNATORIO CENTRAL {enfermera.matricula ? `· MAT. ${enfermera.matricula}` : ''}
-              </span>
-            </div>
-
-            <div className="h-7 w-[1px] bg-slate-300" />
-
-            <div className="flex items-center justify-center">{userButtonSlot}</div>
-          </div>
-        )}
       </header>
 
-      {/* Banner de contingencia si se desconecta */}
+      {/* Aviso cuando se pierde la conexión */}
       {estadoConexion === 'offline' && (
-        <div className="p-3 bg-slate-100 border border-slate-400 rounded-lg text-slate-900 text-xs flex items-center justify-between gap-3 animate-fade-in shadow-sm">
-          <div className="flex items-center gap-2">
-            <span className="font-mono font-bold">⚡ NODO OFFLINE:</span>
-            <span>Continuidad activa. Las operaciones se retienen en buffer local y no se pierde ningún dato.</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              setForzarVerificacion(true)
-              setTimeout(() => setForzarVerificacion(false), 1000)
-              cargarDatos()
-            }}
-            className="text-xs font-mono font-bold bg-black text-white hover:bg-slate-800 px-3 py-1 rounded transition-colors whitespace-nowrap"
-          >
-            [Reconectar]
+        <div className={`${ui.alerta} ${ui.alertaAviso} ${styles.avisoOffline}`} role="alert">
+          <span>
+            <strong>Sin conexión (offline).</strong> Lo que cargues en los formularios se conserva y podés reintentar
+            cuando vuelva la red.
+          </span>
+          <button type="button" onClick={reconectar} className={`${ui.botonSecundario} ${ui.botonChico}`}>
+            Reconectar
           </button>
         </div>
       )}
 
-      {/* --------------------------------------------------------------------- */}
-      {/* GRID PRINCIPAL: 2 COLUMNAS (Wireframe US-20 web.png) */}
-      {/* --------------------------------------------------------------------- */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* =================================================================== */}
-        {/* COLUMNA IZQUIERDA (01 TURNOS + ASIGNACIÓN EXPRESS) */}
-        {/* =================================================================== */}
-        <div className="lg:col-span-7 space-y-6">
-          {/* SECCIÓN 01: TURNOS DE VACUNACIÓN - ATENCIÓN EN SALA */}
-          <section className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-            {/* Header de la sección */}
-            <div className="bg-slate-100 px-4 py-2.5 border-b border-slate-200 flex items-center justify-between">
-              <h2 className="font-mono text-xs font-bold text-slate-800 tracking-wider">
-                01 // TURNOS DE VACUNACIÓN - ATENCIÓN EN SALA
-              </h2>
-            </div>
+      {/* Resumen del día */}
+      <div className={styles.indicadores}>
+        <Indicador etiqueta="En espera" valor={turnosPendientes} detalle="turnos por aplicar" acento="primario" />
+        <Indicador etiqueta="Aplicadas" valor={aplicadasHoy} detalle="dosis registradas" acento="verde" />
+        <Indicador etiqueta="Dosis en stock" valor={dosisTotales} detalle="disponibles en total" acento="neutro" />
+        <Indicador
+          etiqueta="Stock bajo"
+          valor={alertasCriticas}
+          detalle={alertasCriticas > 0 ? 'vacunas para reponer' : 'todo en orden'}
+          acento={alertasCriticas > 0 ? 'rojo' : 'neutro'}
+        />
+      </div>
 
-            {/* Barra de Filtro y Búsqueda */}
-            <div className="p-3 border-b border-slate-200 bg-white flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-              <div className="relative flex-1">
-                <span className="absolute left-2.5 top-2.5 text-xs text-slate-400 leading-none"></span>
-                <input
-                  type="text"
-                  value={busqueda}
-                  onChange={(e) => setBusqueda(e.target.value)}
-                  placeholder=" Buscar por DNI, Apellido o HC del paciente..."
-                  className="w-full text-xs font-mono bg-white border border-slate-300 rounded-lg pl-8 pr-3 py-1.5 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-black"
-                />
+      <div className={styles.columnas}>
+        <div className={styles.columnaPrincipal}>
+          {/* Turnos de vacunación */}
+          <section className={styles.tarjeta} aria-labelledby="titulo-turnos">
+            <div className={styles.tarjetaEncabezado}>
+              <div>
+                <h2 id="titulo-turnos" className={styles.tarjetaTitulo}>Turnos de vacunación</h2>
+                <p className={styles.tarjetaDetalle}>Aplicá la dosis cuando el paciente pasa a la sala.</p>
               </div>
-
-              <select
-                value={filtroEstado}
-                onChange={(e) => setFiltroEstado(e.target.value)}
-                className="text-xs bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono font-bold text-slate-700 focus:outline-none focus:ring-1 focus:ring-black"
-              >
-                <option value="TODOS">TODOS LOS ESTADOS</option>
-                <option value="CONFIRMADO">EN ESPERA (CONFIRMADO)</option>
-                <option value="APLICADO">REGISTRADO & SYNC</option>
-                <option value="DISPONIBLE">DISPONIBLE</option>
-                <option value="CANCELADO">CANCELADO</option>
-              </select>
-
-              <button
-                type="button"
-                onClick={cargarDatos}
-                disabled={cargando}
-                title="Actualizar lista de turnos"
-                className="border border-slate-300 bg-slate-50 hover:bg-slate-100 px-2.5 py-1.5 rounded-lg text-slate-700 text-xs font-mono font-bold disabled:opacity-50 transition-colors"
-              >
-                ☵
-              </button>
             </div>
 
-            {/* Tabla de Turnos */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider">
+            <div className={styles.filtros}>
+              <input
+                type="search"
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                placeholder="Buscar por DNI, apellido o vacuna"
+                aria-label="Buscar turnos"
+                className={`${ui.control} ${styles.buscador}`}
+              />
+              <div className={styles.chips} role="group" aria-label="Filtrar por estado">
+                {FILTROS_TURNO.map(([valor, etiqueta]) => (
+                  <button
+                    key={valor}
+                    type="button"
+                    aria-pressed={filtroEstado === valor}
+                    onClick={() => setFiltroEstado(valor)}
+                    className={`${styles.chip} ${filtroEstado === valor ? styles.chipActivo : ''}`}
+                  >
+                    {etiqueta} <span className={styles.chipContador}>{contarTurnos(valor)}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className={styles.tablaContenedor}>
+              <table className={styles.tabla}>
+                <thead>
                   <tr>
-                    <th className="py-2.5 px-3 w-[18%]">TURNO / HORA</th>
-                    <th className="py-2.5 px-3 w-[27%]">PACIENTE & DNI</th>
-                    <th className="py-2.5 px-3 w-[25%]">ESQUEMA SOLICITADO</th>
-                    <th className="py-2.5 px-3 w-[15%]">ESTADO</th>
-                    <th className="py-2.5 px-3 w-[15%] text-right">ACCIÓN INMEDIATA</th>
+                    <th>Hora</th>
+                    <th>Paciente</th>
+                    <th>Vacuna</th>
+                    <th>Estado</th>
+                    <th className={styles.alDerecha}>Acción</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody>
                   {turnosFiltrados.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="py-8 text-center text-xs font-mono text-slate-400">
-                        {cargando ? 'Sincronizando turnos de vacunación...' : 'No hay turnos registrados que coincidan con la vista.'}
+                      <td colSpan={5} className={styles.vacio}>
+                        {cargando ? 'Cargando turnos…' : 'No hay turnos que coincidan con la búsqueda.'}
                       </td>
                     </tr>
                   ) : (
                     turnosFiltrados.map((t) => {
-                      const isEnEspera = t.estado === 'CONFIRMADO'
-                      const isAplicado = t.estado === 'APLICADO'
-                      const isDisponible = t.estado === 'DISPONIBLE'
-                      const isCancelado = t.estado === 'CANCELADO'
+                      const estado = ESTADOS_TURNO[t.estado] ?? { texto: t.estado, clase: '' }
                       const isProcesando = procesandoTurnoId === t.idTurnoVacunacion
-
                       return (
-                        <tr key={t.idTurnoVacunacion} className="hover:bg-slate-50/70 transition-colors">
-                          <td className="py-3 px-3 align-top">
-                            <span className="font-mono font-bold text-xs text-slate-900 block leading-tight">
-                              #T-{t.idTurnoVacunacion.slice(-4).toUpperCase()}
-                            </span>
-                            <span className="font-mono text-[11px] text-slate-500 block mt-0.5">
-                              {t.hora} hs
-                            </span>
+                        <tr key={t.idTurnoVacunacion}>
+                          <td>
+                            <span className={styles.hora}>{t.hora}</span>
+                            <span className={styles.secundario}>#{t.idTurnoVacunacion.slice(-4).toUpperCase()}</span>
                           </td>
-
-                          <td className="py-3 px-3 align-top">
+                          <td>
                             {t.paciente ? (
-                              <div>
-                                <span className="font-bold text-xs text-slate-900 block leading-tight">
+                              <>
+                                <span className={styles.principal}>
                                   {t.paciente.apellido}, {t.paciente.nombre}
                                 </span>
-                                <span className="font-mono text-[10px] text-slate-500 block mt-0.5">
-                                  DNI {t.paciente.dni}
-                                </span>
-                              </div>
+                                <span className={styles.secundario}>DNI {t.paciente.dni}</span>
+                              </>
                             ) : (
-                              <span className="font-mono text-[11px] text-slate-400 italic">Demanda espontánea</span>
+                              <span className={styles.secundario}>Sin paciente asignado</span>
                             )}
                           </td>
-
-                          <td className="py-3 px-3 align-top">
-                            <span className="font-semibold text-xs text-slate-900 block leading-tight">
-                              {t.vacuna?.nombre || 'Inmunobiológico'}
-                            </span>
-                            {t.lote ? (
-                              <span className="inline-block bg-slate-100 text-slate-700 font-mono text-[9px] px-1.5 py-0.5 rounded mt-1 border border-slate-200">
-                                Lote {t.lote.numeroLote}
-                              </span>
-                            ) : (
-                              <span className="inline-block bg-slate-50 text-slate-500 font-mono text-[9px] px-1.5 py-0.5 rounded mt-1 border border-slate-200">
-                                Dosis estándar
-                              </span>
-                            )}
+                          <td>
+                            <span className={styles.principal}>{t.vacuna?.nombre || 'Vacuna'}</span>
+                            <span className={styles.secundario}>{t.lote ? `Lote ${t.lote.numeroLote}` : 'Sin lote asignado'}</span>
                           </td>
-
-                          <td className="py-3 px-3 align-top">
-                            {isEnEspera && (
-                              <span className="inline-block bg-slate-100 text-slate-800 font-mono text-[10px] font-bold px-2 py-0.5 rounded border border-slate-300 whitespace-nowrap">
-                                [EN ESPERA]
-                              </span>
-                            )}
-                            {isAplicado && (
-                              <span className="inline-block bg-slate-100 text-slate-600 font-mono text-[10px] font-bold px-2 py-0.5 rounded border border-slate-200 whitespace-nowrap">
-                                [REGISTRADO & SYNC]
-                              </span>
-                            )}
-                            {isDisponible && (
-                              <span className="inline-block bg-white text-slate-700 font-mono text-[10px] font-medium px-2 py-0.5 rounded border border-slate-300 whitespace-nowrap">
-                                CITADO (SALA ESPERA)
-                              </span>
-                            )}
-                            {isCancelado && (
-                              <span className="inline-block bg-slate-100 text-slate-400 font-mono text-[10px] line-through px-1.5 py-0.5 rounded whitespace-nowrap">
-                                CANCELADO
-                              </span>
-                            )}
+                          <td>
+                            <span className={`${styles.estado} ${estado.clase}`}>{estado.texto}</span>
                           </td>
-
-                          <td className="py-3 px-3 align-top text-right">
-                            {isEnEspera && (
+                          <td className={styles.alDerecha}>
+                            {t.estado === 'CONFIRMADO' ? (
                               <button
                                 type="button"
                                 disabled={isProcesando}
                                 onClick={() => handleAplicarDosis(t.idTurnoVacunacion)}
-                                className="bg-black hover:bg-slate-800 text-white font-mono font-bold text-[10px] px-2.5 py-1.5 rounded transition-all shadow-sm active:scale-95 inline-flex items-center gap-1 disabled:opacity-50 whitespace-nowrap"
-                                title="Aplicar dosis y registrar inmediatamente en inventario"
+                                className={`${ui.botonPrimario} ${ui.botonChico}`}
+                                title="Registra la dosis aplicada y la descuenta del stock"
                               >
-                                <span>{isProcesando ? 'PROCESANDO...' : 'APLICAR & DESCONTAR'}</span>
-                                <span>➔</span>
+                                {isProcesando ? 'Aplicando…' : 'Aplicar dosis'}
                               </button>
-                            )}
-                            {isAplicado && (
-                              <span className="inline-flex items-center gap-1 font-mono text-[10px] text-slate-700 font-bold bg-slate-100 px-2 py-1 rounded border border-slate-200 whitespace-nowrap">
-                                ✓ CONFIRMAR DOSIS
-                              </span>
-                            )}
-                            {isDisponible && (
-                              <span className="font-mono text-[10px] text-slate-400 italic whitespace-nowrap">
-                                En espera
-                              </span>
+                            ) : (
+                              <span className={styles.secundario}>—</span>
                             )}
                           </td>
                         </tr>
@@ -479,413 +438,238 @@ export default function PanelEnfermeria({ enfermera, userButtonSlot }: PanelEnfe
             </div>
           </section>
 
-          {/* SECCIÓN EXPRESS: ASIGNACIÓN EXPRESS EN MOSTRADOR (DEMANDA ESPONTÁNEA) */}
-          <section className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-            <div className="bg-slate-100 px-4 py-2 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-              <span className="font-mono text-xs font-bold text-slate-800 tracking-wider">
-                ASIGNACIÓN EXPRESS EN MOSTRADOR (DEMANDA ESPONTÁNEA)
-              </span>
-              <span className="font-mono text-[10px] text-slate-500 uppercase tracking-wider">
-                DESCONEXIÓN SEGURA // LOCAL FIRST
-              </span>
+          {/* Atención sin turno previo */}
+          <section className={styles.tarjeta} aria-labelledby="titulo-sin-turno">
+            <div>
+              <h2 id="titulo-sin-turno" className={styles.tarjetaTitulo}>Atención sin turno</h2>
+              <p className={styles.tarjetaDetalle}>Para pacientes que llegan al mostrador sin turno reservado.</p>
             </div>
 
-            <div className="p-4 bg-white">
-              {mensajeExitoExpress && (
-                <div className="mb-3 p-2.5 bg-slate-100 border border-slate-800 text-slate-900 font-medium text-xs rounded-lg flex items-center gap-2">
-                  <span>✓</span>
-                  <span>{mensajeExitoExpress}</span>
-                </div>
-              )}
-              {mensajeErrorExpress && (
-                <div className="mb-3 p-2.5 bg-slate-100 border-2 border-black text-slate-900 text-xs rounded-lg space-y-1">
-                  <div className="font-bold">⚠ {mensajeErrorExpress}</div>
-                  {datosGuardadosOfflineExpress && (
-                    <p className="text-[11px] text-slate-700">
-                      Datos retenidos intactos en buffer local. Reintentar al restablecerse la red.
-                    </p>
-                  )}
-                </div>
-              )}
-
-              <form onSubmit={handleCrearExpress} className="flex flex-col sm:flex-row items-end gap-3">
-                {/* DNI PACIENTE */}
-                <div className="w-full sm:w-[42%]">
-                  <label htmlFor="express-dni" className="font-mono text-[10px] font-bold uppercase text-slate-600 block mb-1">
-                    DNI PACIENTE
-                  </label>
-                  <input
-                    id="express-dni"
-                    type="text"
-                    value={dniExpress}
-                    onChange={(e) => setDniExpress(e.target.value)}
-                    placeholder="Ej: 42.119.832"
-                    list="pacientes-dni-list"
-                    disabled={procesandoExpress}
-                    className="w-full text-xs font-mono border border-slate-300 rounded-lg px-3 py-2 bg-slate-50 text-slate-900 focus:outline-none focus:ring-1 focus:ring-black"
-                    required
-                  />
-                  <datalist id="pacientes-dni-list">
-                    {pacientes.map((p) => (
-                      <option key={p.idPaciente} value={p.dni}>
-                        {p.apellido}, {p.nombre}
-                      </option>
-                    ))}
-                  </datalist>
-                </div>
-
-                {/* VACUNA DEL CALENDARIO */}
-                <div className="w-full sm:flex-1">
-                  <label htmlFor="express-vacuna" className="font-mono text-[10px] font-bold uppercase text-slate-600 block mb-1">
-                    VACUNA DEL CALENDARIO
-                  </label>
-                  <select
-                    id="express-vacuna"
-                    value={idVacunaExpress}
-                    onChange={(e) => setIdVacunaExpress(e.target.value)}
-                    disabled={procesandoExpress}
-                    className="w-full text-xs border border-slate-300 rounded-lg px-3 py-2 bg-slate-50 text-slate-900 focus:outline-none focus:ring-1 focus:ring-black"
-                    required
-                  >
-                    <option value="">Seleccionar Inmunobiológico...</option>
-                    {vacunas.map((v) => (
-                      <option key={v.idVacuna} value={v.idVacuna}>
-                        {v.nombre} ({v.stockDisponible} dosis disp.)
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* BOTÓN + */}
-                <div>
-                  <button
-                    type="submit"
-                    disabled={procesandoExpress}
-                    className="h-9 w-9 bg-black hover:bg-slate-800 text-white font-bold text-lg rounded-lg flex items-center justify-center transition-all shadow-sm active:scale-95 disabled:opacity-50"
-                    title="Asignar e Iniciar Dosis en Mostrador"
-                  >
-                    {procesandoExpress ? '…' : '+'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </section>
-        </div>
-
-        {/* =================================================================== */}
-        {/* COLUMNA DERECHA (02 CONTROL DE STOCK DISPONIBLE EN TIEMPO REAL) */}
-        {/* =================================================================== */}
-        <div className="lg:col-span-5 space-y-6">
-          <section className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-            {/* Header de la sección */}
-            <div className="bg-slate-100 px-4 py-2.5 border-b border-slate-200 flex items-center justify-between">
-              <span className="font-mono text-xs font-bold text-slate-800 tracking-wider">
-                02 // CONTROL DE STOCK DISPONIBLE (TIEMPO REAL)
-              </span>
-              <span className="text-black text-xs leading-none">●</span>
-            </div>
-
-            {/* KPI METRIC STRIP (3 TARJETAS EN LÍNEA) */}
-            <div className="p-4 border-b border-slate-200 grid grid-cols-3 gap-3 bg-slate-50/50">
-              {/* DOSIS TOTALES */}
-              <div className="bg-slate-100/90 p-3 rounded-lg border border-slate-200">
-                <span className="font-mono text-[9px] font-bold uppercase text-slate-500 block leading-tight">
-                  DOSIS TOTALES
-                </span>
-                <span className="font-mono text-2xl sm:text-3xl font-extrabold text-slate-900 block my-1">
-                  {dosisTotales}
-                </span>
-                <span className="font-mono text-[9px] text-slate-500 block leading-tight">
-                  Unidades físicas
-                </span>
+            {mensajeExitoExpress && (
+              <p className={`${ui.alerta} ${ui.alertaExito}`} role="status">✓ {mensajeExitoExpress}</p>
+            )}
+            {mensajeErrorExpress && (
+              <div className={`${ui.alerta} ${ui.alertaError}`} role="alert">
+                <strong>{mensajeErrorExpress}</strong>
+                {datosGuardadosOfflineExpress && (
+                  <p className={styles.textoAlerta}>Los datos quedaron cargados; reintentá cuando vuelva la conexión.</p>
+                )}
               </div>
+            )}
 
-              {/* APLICADAS HOY */}
-              <div className="bg-slate-100/90 p-3 rounded-lg border border-slate-200">
-                <span className="font-mono text-[9px] font-bold uppercase text-slate-500 block leading-tight">
-                  APLICADAS HOY
-                </span>
-                <span className="font-mono text-2xl sm:text-3xl font-extrabold text-slate-900 block my-1">
-                  {aplicadasHoy}
-                </span>
-                <span className="font-mono text-[9px] text-slate-500 block leading-tight">
-                  Dosis registradas
-                </span>
-              </div>
+            <form onSubmit={handleCrearExpress} className={styles.formSinTurno}>
+              <label className={ui.campo}>
+                DNI del paciente
+                <input
+                  type="text"
+                  value={dniExpress}
+                  onChange={(e) => setDniExpress(e.target.value)}
+                  placeholder="Ej: 42119832"
+                  list="pacientes-dni-list"
+                  disabled={procesandoExpress}
+                  className={ui.control}
+                  required
+                />
+                <datalist id="pacientes-dni-list">
+                  {pacientes.map((p) => (
+                    <option key={p.idPaciente} value={p.dni}>
+                      {p.apellido}, {p.nombre}
+                    </option>
+                  ))}
+                </datalist>
+              </label>
 
-              {/* ALERTA CRÍTICA (BLACK INVERTED CARD) */}
-              <div className="bg-black text-white p-3 rounded-lg border border-black shadow-sm">
-                <span className="font-mono text-[9px] font-bold uppercase text-slate-300 block leading-tight">
-                  ALERTA CRÍTICA
-                </span>
-                <span className="font-mono text-2xl sm:text-3xl font-extrabold text-white block my-1">
-                  {alertasCriticas}
-                </span>
-                <span className="font-mono text-[9px] text-slate-300 block leading-tight">
-                  Biológico en mínimo
-                </span>
-              </div>
-            </div>
+              <label className={ui.campo}>
+                Vacuna
+                <select
+                  value={idVacunaExpress}
+                  onChange={(e) => setIdVacunaExpress(e.target.value)}
+                  disabled={procesandoExpress}
+                  className={ui.control}
+                  required
+                >
+                  <option value="">Elegí una vacuna</option>
+                  {vacunas.map((v) => (
+                    <option key={v.idVacuna} value={v.idVacuna}>
+                      {v.nombre} ({v.stockDisponible} dosis)
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-            {/* SUBHEADER INVENTARIO */}
-            <div className="bg-slate-100/70 px-4 py-2 border-b border-slate-200 flex items-center justify-between text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider">
-              <span>INMUNOBIOLÓGICO / LOTE</span>
-              <span>DISPONIBILIDAD / VTO</span>
-            </div>
-
-            {/* LISTA DE VACUNAS EN TIEMPO REAL */}
-            <div className="divide-y divide-slate-100 max-h-[380px] overflow-y-auto">
-              {vacunas.length === 0 ? (
-                <div className="p-8 text-center text-xs font-mono text-slate-400">
-                  {cargando ? 'Cargando inventario biológico...' : 'No hay vacunas registradas.'}
-                </div>
-              ) : (
-                vacunas.map((v) => {
-                  const isCritico = v.stockDisponible <= 2
-                  const primerLote = v.lotes[0]
-
-                  if (isCritico) {
-                    return (
-                      <div
-                        key={v.idVacuna}
-                        className="bg-black text-white px-4 py-3 flex items-center justify-between border-b border-slate-800"
-                      >
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-xs text-white">
-                              {v.nombre}
-                            </span>
-                            <span className="bg-white text-black font-mono text-[9px] font-extrabold px-1.5 py-0.5 rounded">
-                              [!] STOCK CRÍTICO
-                            </span>
-                          </div>
-                          <span className="font-mono text-[10px] text-slate-300 block mt-0.5">
-                            LOTE: {primerLote?.numeroLote || 'S/L'} · VTO: {primerLote?.vencimiento ? primerLote.vencimiento.slice(0, 7) : 'N/D'}
-                          </span>
-                        </div>
-
-                        <div className="text-right">
-                          <span className="font-mono font-bold text-xs text-white block">
-                            {v.stockDisponible} dosis
-                          </span>
-                          <span className="font-mono text-[9px] text-slate-200 uppercase tracking-wider block font-bold">
-                            REPONER STOCK
-                          </span>
-                        </div>
-                      </div>
-                    )
-                  }
-
-                  return (
-                    <div
-                      key={v.idVacuna}
-                      className="px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors"
-                    >
-                      <div>
-                        <span className="font-bold text-xs text-slate-900 block leading-tight">
-                          {v.nombre}
-                        </span>
-                        <span className="font-mono text-[10px] text-slate-500 block mt-0.5">
-                          LOTE: {primerLote?.numeroLote || 'S/L'} · VTO: {primerLote?.vencimiento ? primerLote.vencimiento.slice(0, 7) : 'N/D'}
-                        </span>
-                      </div>
-
-                      <div className="text-right">
-                        <span className="font-mono font-bold text-xs text-slate-900 block">
-                          {v.stockDisponible} dosis
-                        </span>
-                        <span className="font-mono text-[9px] text-slate-500 uppercase tracking-wider block">
-                          ÓPTIMO
-                        </span>
-                      </div>
-                    </div>
-                  )
-                })
-              )}
-            </div>
-
-            {/* BOTÓN INGRESO / AJUSTE DE LOTE */}
-            <div className="p-3 bg-slate-50 border-t border-slate-200">
-              <button
-                type="button"
-                onClick={() => setMostrarModalStock(true)}
-                className="w-full text-xs font-mono font-bold bg-white text-slate-900 hover:bg-slate-100 border border-slate-300 py-2 rounded-lg transition-colors flex items-center justify-center gap-2 shadow-sm"
-              >
-                <span>+ REGISTRAR INGRESO / AJUSTE DE LOTE</span>
+              <button type="submit" disabled={procesandoExpress} className={ui.botonPrimario}>
+                {procesandoExpress ? 'Asignando…' : 'Asignar dosis'}
               </button>
-            </div>
+            </form>
           </section>
         </div>
+
+        {/* Stock disponible */}
+        <aside className={styles.tarjeta} aria-labelledby="titulo-stock">
+          <div className={styles.tarjetaEncabezado}>
+            <div>
+              <h2 id="titulo-stock" className={styles.tarjetaTitulo}>Stock disponible</h2>
+              <p className={styles.tarjetaDetalle}>Se actualiza al aplicar cada dosis.</p>
+            </div>
+          </div>
+
+          {vacunas.length === 0 ? (
+            <p className={styles.vacio}>{cargando ? 'Cargando stock…' : 'No hay vacunas registradas.'}</p>
+          ) : (
+            <ul className={styles.listaStock}>
+              {vacunas.map((v) => {
+                const nivel = NIVELES_STOCK[nivelStock(v.stockDisponible, v.umbralAlerta)]
+                const primerLote = v.lotes[0]
+                return (
+                  <li key={v.idVacuna} className={styles.itemStock}>
+                    <div>
+                      <span className={styles.principal}>{v.nombre}</span>
+                      <span className={styles.secundario}>
+                        {primerLote ? `Lote ${primerLote.numeroLote}` : 'Sin lote'}
+                        {primerLote?.vencimiento ? ` · vence ${vencimientoCorto(primerLote.vencimiento)}` : ''}
+                      </span>
+                    </div>
+                    <span className={`${styles.stock} ${nivel.clase}`}>
+                      <span aria-hidden="true">{nivel.icono}</span> {v.stockDisponible} dosis
+                    </span>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+
+          <div className={styles.accionesStock}>
+            <button type="button" onClick={() => setMostrarModalStock(true)} className={ui.botonSecundario}>
+              + Registrar ingreso o ajuste
+            </button>
+            <Link href="/dashboard/enfermero/inventario" className={ui.linkSuave}>
+              Ver inventario completo →
+            </Link>
+          </div>
+        </aside>
       </div>
 
-      {/* --------------------------------------------------------------------- */}
-      {/* BANNER INFERIOR DE CONTINUIDAD (Wireframe US-20 web.png) */}
-      {/* --------------------------------------------------------------------- */}
-      <footer className="bg-black text-white p-4 rounded-xl border border-black flex flex-col sm:flex-row items-center justify-between gap-4 shadow-md">
-        <div className="flex items-center gap-3">
-
-          <div>
-            <span className="font-mono font-bold text-xs uppercase tracking-wider text-white block">
-              PROTOCOLO DE CONTINUIDAD OPERATIVA ININTERRUMPIDA
-            </span>
-            <span className="text-xs text-slate-300 block">
-              Buffer local offline activo: 100% de operaciones garantizadas sin latencia ni pérdida de información.
-            </span>
-          </div>
-        </div>
-
-        <div className="font-mono text-xs text-slate-300 font-bold whitespace-nowrap self-start sm:self-auto">
-          Dosis aplicadas: <span className="text-white">{aplicadasHoy}</span> | Pendientes: <span className="text-white">{turnosPendientes}</span>
-        </div>
-      </footer>
-
-      {/* --------------------------------------------------------------------- */}
-      {/* MODAL INGRESO / AJUSTE DE LOTE */}
-      {/* --------------------------------------------------------------------- */}
+      {/* Modal de ingreso o ajuste de stock */}
       {mostrarModalStock && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white border border-slate-300 rounded-xl max-w-lg w-full p-5 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-              <div>
-                <span className="font-mono text-[10px] uppercase font-bold text-slate-500 block">
-                  Gestión Transaccional
-                </span>
-                <h3 className="font-bold text-sm text-slate-900">
-                  Ingreso o Ajuste de Stock por Lote
-                </h3>
-              </div>
+        <div className={styles.modalFondo} role="dialog" aria-modal="true" aria-labelledby="titulo-modal-stock">
+          <form className={styles.modal} onSubmit={handleGuardarMovimientoStock}>
+            <div className={styles.modalEncabezado}>
+              <h2 id="titulo-modal-stock" className={styles.tarjetaTitulo}>Ingreso o ajuste de stock</h2>
               <button
                 type="button"
                 onClick={() => setMostrarModalStock(false)}
-                className="text-slate-400 hover:text-black font-mono text-sm"
+                className={styles.cerrar}
+                aria-label="Cerrar"
               >
                 ✕
               </button>
             </div>
 
             {errorStock && (
-              <div className="p-2.5 bg-slate-100 border border-black text-black text-xs rounded-lg font-mono">
-                ⚠ {errorStock}
-              </div>
+              <p className={`${ui.alerta} ${ui.alertaError}`} role="alert">{errorStock}</p>
             )}
 
-            <form onSubmit={handleGuardarMovimientoStock} className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Vacuna <span className="text-slate-900 font-bold">*</span>
-                </label>
+            <label className={ui.campo}>
+              Vacuna *
+              <select
+                value={modalVacunaId}
+                onChange={(e) => setModalVacunaId(e.target.value)}
+                disabled={procesandoStock}
+                className={ui.control}
+                required
+              >
+                <option value="">Elegí una vacuna</option>
+                {vacunas.map((v) => (
+                  <option key={v.idVacuna} value={v.idVacuna}>
+                    {v.nombre} (stock actual: {v.stockDisponible})
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <div className={styles.modalGrilla}>
+              <label className={ui.campo}>
+                Operación *
                 <select
-                  value={modalVacunaId}
-                  onChange={(e) => setModalVacunaId(e.target.value)}
+                  value={modalTipoMov}
+                  onChange={(e) => setModalTipoMov(e.target.value as 'INGRESO' | 'AJUSTE')}
                   disabled={procesandoStock}
-                  className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900"
-                  required
+                  className={ui.control}
                 >
-                  <option value="">Seleccionar Vacuna...</option>
-                  {vacunas.map((v) => (
-                    <option key={v.idVacuna} value={v.idVacuna}>
-                      {v.nombre} (Stock actual: {v.stockDisponible})
-                    </option>
-                  ))}
+                  <option value="INGRESO">Ingreso (suma dosis)</option>
+                  <option value="AJUSTE">Ajuste (suma o resta)</option>
                 </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Tipo de Operación <span className="text-slate-900 font-bold">*</span>
-                  </label>
-                  <select
-                    value={modalTipoMov}
-                    onChange={(e) => setModalTipoMov(e.target.value as any)}
-                    disabled={procesandoStock}
-                    className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900"
-                  >
-                    <option value="INGRESO">Ingreso (+ Dosis)</option>
-                    <option value="AJUSTE">Ajuste (+ o - Dosis)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Cantidad <span className="text-slate-900 font-bold">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    value={modalCantidad}
-                    onChange={(e) => setModalCantidad(e.target.value)}
-                    placeholder="Ej: 10 o -2"
-                    disabled={procesandoStock}
-                    className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Número de Lote (Opcional)
-                  </label>
-                  <input
-                    type="text"
-                    value={modalLote}
-                    onChange={(e) => setModalLote(e.target.value)}
-                    placeholder="Ej: AGP-9921"
-                    disabled={procesandoStock}
-                    className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Vencimiento (Opcional)
-                  </label>
-                  <input
-                    type="date"
-                    value={modalVencimiento}
-                    onChange={(e) => setModalVencimiento(e.target.value)}
-                    disabled={procesandoStock}
-                    className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Motivo / Observación
-                </label>
+              </label>
+              <label className={ui.campo}>
+                Cantidad *
+                <input
+                  type="number"
+                  value={modalCantidad}
+                  onChange={(e) => setModalCantidad(e.target.value)}
+                  placeholder={modalTipoMov === 'INGRESO' ? 'Ej: 10' : 'Ej: -2 o 5'}
+                  disabled={procesandoStock}
+                  className={ui.control}
+                  required
+                />
+              </label>
+              <label className={ui.campo}>
+                Número de lote
                 <input
                   type="text"
-                  value={modalMotivo}
-                  onChange={(e) => setModalMotivo(e.target.value)}
-                  placeholder="Ej: Entrega mensual o Rotura de ampolla"
+                  value={modalLote}
+                  onChange={(e) => setModalLote(e.target.value)}
+                  placeholder="Opcional"
                   disabled={procesandoStock}
-                  className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-900"
+                  className={ui.control}
                 />
-              </div>
+              </label>
+              <label className={ui.campo}>
+                Vencimiento
+                <input
+                  type="date"
+                  value={modalVencimiento}
+                  onChange={(e) => setModalVencimiento(e.target.value)}
+                  disabled={procesandoStock}
+                  className={ui.control}
+                />
+              </label>
+            </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
-                <button
-                  type="button"
-                  onClick={() => setMostrarModalStock(false)}
-                  disabled={procesandoStock}
-                  className="text-xs font-bold px-4 py-2 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={procesandoStock}
-                  className="text-xs font-bold px-4 py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50"
-                >
-                  {procesandoStock ? 'Registrando...' : 'Confirmar Movimiento'}
-                </button>
-              </div>
-            </form>
-          </div>
+            <label className={ui.campo}>
+              Motivo
+              <input
+                type="text"
+                value={modalMotivo}
+                onChange={(e) => setModalMotivo(e.target.value)}
+                placeholder="Ej: entrega mensual, ampolla rota"
+                disabled={procesandoStock}
+                className={ui.control}
+              />
+            </label>
+
+            <div className={styles.modalAcciones}>
+              <button type="button" onClick={() => setMostrarModalStock(false)} disabled={procesandoStock} className={ui.botonSecundario}>
+                Cancelar
+              </button>
+              <button type="submit" disabled={procesandoStock} className={ui.botonPrimario}>
+                {procesandoStock ? 'Registrando…' : 'Confirmar'}
+              </button>
+            </div>
+          </form>
         </div>
       )}
+    </div>
+  )
+}
+
+type Acento = 'primario' | 'verde' | 'rojo' | 'neutro'
+
+function Indicador({ etiqueta, valor, detalle, acento }: { etiqueta: string; valor: number; detalle: string; acento: Acento }) {
+  return (
+    <div className={`${styles.indicador} ${styles[`acento_${acento}`]}`}>
+      <span className={styles.indicadorEtiqueta}>{etiqueta}</span>
+      <span className={styles.indicadorValor}>{valor}</span>
+      <span className={styles.indicadorDetalle}>{detalle}</span>
     </div>
   )
 }

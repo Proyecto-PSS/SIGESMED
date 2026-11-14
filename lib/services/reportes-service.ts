@@ -48,7 +48,7 @@ export class ReportesService {
         _count: { _all: true },
         _sum: { monto: true },
       }),
-      prisma.vacuna.findMany({ select: { idVacuna: true, nombre: true, stock: true } }),
+      prisma.vacuna.findMany({ select: { idVacuna: true, nombre: true, stock: true, umbralAlerta: true } }),
     ])
 
     const especialidadPorMedico = new Map(medicos.map((m) => [m.idMedico, m.especialidad]))
