@@ -42,14 +42,52 @@
 /* Filtros */
 .filtersForm {
   display: grid;
-  grid-template-columns: minmax(200px, 1.8fr) minmax(140px, 1fr) minmax(140px, 1fr) auto auto;
+  grid-template-columns: minmax(200px, 1.6fr) minmax(160px, 1.2fr) minmax(140px, 1fr) minmax(140px, 1fr) auto auto;
   gap: 12px;
   align-items: flex-end;
   padding: 16px;
   background: #fafaf7;
   border: 1px solid #e4e4dd;
   border-radius: 12px;
-  margin-bottom: 24px;
+  margin-bottom: 14px;
+}
+
+/* Etiquetas rápidas de estado */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.chip {
+  padding: 6px 14px;
+  border: 1px solid #d9dcd6;
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--color-tinta-suave);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.chip:hover {
+  border-color: var(--color-primario);
+  color: var(--color-primario);
+}
+
+.chipActivo,
+.chipActivo:hover {
+  background: var(--color-primario);
+  border-color: var(--color-primario);
+  color: #ffffff;
+}
+
+.chip:disabled {
+  cursor: wait;
+  opacity: 0.7;
 }
 
 .filterGroup {
@@ -396,6 +434,15 @@
   background: #b91c1c;
 }
 
+.modalBtnDanger:disabled {
+  background: #e7a9a9;
+  cursor: not-allowed;
+}
+
+.modalCampo {
+  margin-bottom: 20px;
+}
+
 .modalBtnPrimary {
   padding: 9px 16px;
   background: var(--color-primario);
@@ -446,6 +493,12 @@
   text-align: center;
   color: #6b7b80;
   font-size: 14px;
+}
+
+@media (max-width: 1100px) {
+  .filtersForm {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
 }
 
 @media (max-width: 900px) {

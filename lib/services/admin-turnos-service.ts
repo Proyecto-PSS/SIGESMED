@@ -5,6 +5,7 @@ import { EmailService, type DatosAvisoCancelacionEmail } from './email-service'
 
 export interface FiltrosTurnosAdmin {
   paciente?: string
+  idMedico?: string
   fecha?: string
   estado?: EstadoTurno
   page?: number
@@ -49,16 +50,21 @@ function errorConEstado(message: string, statusCode: number, code?: string) {
   return err
 }
 
-import { parseFechaFiltro, formatearFechaArgentina } from '../utils/admin-turnos-utils'
+import {
+  parseFechaFiltro,
+  formatearFechaArgentina,
+  type MotivoCancelacionAdministrativa,
+} from '../utils/admin-turnos-utils'
 export { parseFechaFiltro, formatearFechaArgentina }
 
 export class AdminTurnosService {
   /**
    * RF-21.1 / RF-21.2 / RF-21.3:
-   * Consulta los turnos con filtros combinados por paciente (nombre, apellido, DNI, email) y fecha exacta.
+   * Consulta los turnos con filtros combinados por paciente (nombre, apellido, DNI, email),
+   * médico, fecha exacta y estado.
    */
   static async consultarTurnos(filtros: FiltrosTurnosAdmin = {}) {
-    const { paciente, fecha, estado, page = 1, pageSize = 50 } = filtros
+    const { paciente, idMedico, fecha, estado, page = 1, pageSize = 50 } = filtros
     const validPage = Math.max(1, Number(page) || 1)
     const validPageSize = Math.min(100, Math.max(1, Number(pageSize) || 50))
     const skip = (validPage - 1) * validPageSize
@@ -79,7 +85,12 @@ export class AdminTurnosService {
       where.estado = estado
     }
 
-    // 3. Filtro por paciente (búsqueda en nombre, apellido, DNI o email)
+    // 3. Filtro opcional por médico
+    if (idMedico) {
+      where.idMedico = idMedico
+    }
+
+    // 4. Filtro por paciente (búsqueda en nombre, apellido, DNI o email)
     if (paciente && paciente.trim()) {
       const termino = paciente.trim()
       where.paciente = {
@@ -155,9 +166,12 @@ export class AdminTurnosService {
   /**
    * RF-21.4 / RF-21.6:
    * Cancelación administrativa atómica e individual de un turno confirmado.
-   * Conserva el idPaciente, registra el motivo y cancela recordatorios pendientes.
+   * Conserva el idPaciente, registra el motivo elegido por el administrador y cancela recordatorios pendientes.
    */
-  static async cancelarTurnoAdministrativo(idTurno: string) {
+  static async cancelarTurnoAdministrativo(
+    idTurno: string,
+    motivoCancelacion: MotivoCancelacionAdministrativa
+  ) {
     if (!idTurno || typeof idTurno !== 'string') {
       throw errorConEstado('El identificador del turno es requerido.', 400, 'INVALID_TURNO_ID')
     }
@@ -193,8 +207,6 @@ export class AdminTurnosService {
           'TURNO_WITHOUT_PATIENT'
         )
       }
-
-      const motivoCancelacion = 'Cancelación administrativa por modificación de la agenda médica'
 
       // 4. Actualización atómica condicional
       const res = await tx.turno.updateMany({
