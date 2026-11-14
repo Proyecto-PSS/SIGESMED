@@ -25,3 +25,30 @@ export function formatearFechaArgentina(fecha: Date | string): string {
     year: 'numeric',
   })
 }
+
+/**
+ * Motivos que el administrador puede elegir al cancelar un turno (US-21).
+ * Es la única fuente de verdad: la usan el modal, la API y el servicio.
+ */
+export const MOTIVOS_CANCELACION_ADMINISTRATIVA = [
+  'Cambio en la agenda del médico',
+  'Ausencia imprevista del profesional',
+  'Solicitud del paciente',
+  'Turno duplicado o cargado por error',
+] as const
+
+export type MotivoCancelacionAdministrativa = (typeof MOTIVOS_CANCELACION_ADMINISTRATIVA)[number]
+
+/** Indica si el valor recibido es uno de los motivos de cancelación permitidos. */
+export function esMotivoCancelacionValido(motivo: unknown): motivo is MotivoCancelacionAdministrativa {
+  return (
+    typeof motivo === 'string' &&
+    (MOTIVOS_CANCELACION_ADMINISTRATIVA as readonly string[]).includes(motivo)
+  )
+}
+
+/** Normaliza el identificador de médico recibido como filtro: vacío o solo espacios equivale a "sin filtro". */
+export function normalizarFiltroMedico(idMedico: string | null | undefined): string | undefined {
+  const valor = idMedico?.trim()
+  return valor ? valor : undefined
+}

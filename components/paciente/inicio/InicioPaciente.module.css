@@ -1,0 +1,49 @@
+/* Ocupa todo el ancho y el alto visible debajo de la barra (4rem). */
+.pagina {
+  min-height: calc(100svh - 4rem);
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem clamp(1rem, 2.5vw, 2rem) 2rem;
+}
+
+.saludo {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.5rem, 2.8vw, 2rem);
+  line-height: 1.15;
+  color: var(--color-tinta);
+}
+
+.subtitulo {
+  margin-top: 0.35rem;
+  color: var(--color-tinta-suave);
+}
+
+/* La grilla crece hasta llenar el espacio que queda; las tarjetas se estiran a su alto. */
+.grilla {
+  list-style: none;
+  flex: 1;
+  margin-top: 1.5rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(1rem, 1.5vw, 1.5rem);
+}
+
+.grilla > li {
+  display: flex;
+  flex-direction: column;
+}
+
+.grilla > li > * {
+  flex: 1;
+}
+
+@media (max-width: 900px) {
+  .pagina {
+    min-height: auto;
+  }
+
+  .grilla {
+    grid-template-columns: 1fr;
+  }
+}

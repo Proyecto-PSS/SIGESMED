@@ -1,8 +1,12 @@
 'use client'
 
+import Link from 'next/link'
 import { useState } from 'react'
 import { RESERVA_CONFIG } from '@/lib/config/reserva-config'
 import { esperar, fetchConTimeout } from '@/lib/utils/resilient-fetch'
+import { nombreEspecialidadMedica } from '@/lib/utils/especialidades-medicas'
+import ui from '@/components/paciente/ui/ui.module.css'
+import styles from './mis-citas.module.css'
 
 type Cita = {
   idTurno: string
@@ -35,10 +39,15 @@ type Props = {
   citas: Cita[]
 }
 
-const nombresEspecialidad: Record<string, string> = {
-  CLINICA_MEDICA: 'Clínica Médica',
-  PEDIATRIA: 'Pediatría',
-  TRAUMATOLOGIA_ORTOPEDIA: 'Traumatología y Ortopedia',
+// Partes de la fecha para el bloque de calendario de cada tarjeta (en UTC, como se guardan).
+function partesFecha(fecha: string) {
+  const d = new Date(fecha)
+  const opciones = { timeZone: 'UTC' } as const
+  return {
+    diaSemana: d.toLocaleDateString('es-AR', { ...opciones, weekday: 'short' }).replace('.', ''),
+    numero: d.toLocaleDateString('es-AR', { ...opciones, day: 'numeric' }),
+    mes: d.toLocaleDateString('es-AR', { ...opciones, month: 'short' }).replace('.', ''),
+  }
 }
 
 function formatearFecha(fecha: string) {
@@ -235,228 +244,168 @@ export default function MisCitas({ citas }: Props) {
   }
 
   return (
-    <>
+    <div className={ui.pila}>
       {/* Error - los datos de las citas permanecen visibles siempre */}
       {error && (
-        <section className="mt-6 border border-red-200 bg-red-50 p-6" role="alert">
-          <p className="text-sm text-red-800">
-            {error}
-          </p>
-        </section>
+        <p className={`${ui.alerta} ${ui.alertaError}`} role="alert">
+          {error}
+        </p>
+      )}
+
+      {errorDescargaComprobante && (
+        <p className={`${ui.alerta} ${ui.alertaError}`} role="alert">
+          {errorDescargaComprobante}
+        </p>
       )}
 
       {/* Sin turnos */}
       {citasActuales.length === 0 && (
-        <section className="mt-6 border border-slate-300 bg-white p-6">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Próximos turnos
-          </p>
-
-          <h2 className="mt-3 text-base font-bold">
-            No tenés turnos confirmados
-          </h2>
-
-          <p className="mt-2 text-sm text-slate-600">
-            Actualmente no tenés citas programadas.
-          </p>
-
-          <a
-            href="/dashboard/paciente/reservar-turno"
-            className="mt-5 inline-block bg-black px-4 py-3 text-xs font-semibold text-white hover:bg-slate-800"
-          >
-            Solicitar un turno
-          </a>
+        <section className={ui.vacio}>
+          <h2 className={ui.tarjetaTitulo}>No tenés turnos próximos</h2>
+          <p className={ui.tarjetaTexto}>Cuando reserves un turno, lo vas a ver acá.</p>
+          <div style={{ marginTop: '1.25rem' }}>
+            <Link href="/dashboard/paciente/reservar-turno" className={ui.botonPrimario}>
+              Sacar un turno
+            </Link>
+          </div>
         </section>
       )}
 
       {/* Lista de turnos */}
       {citasActuales.length > 0 && (
-        <section className="mt-6 space-y-4">
+        <ul className={styles.lista}>
           {citasActuales.map((cita) => {
             const cancelable = puedeCancelar(cita)
             const mostrandoConfirmacion = citaSeleccionada === cita.idTurno
             const esParticular = cita.modalidad !== 'COBERTURA'
+            const pago = cita.pagos?.[0]
+            const pagoAprobado = pago?.estado === 'APROBADO'
+            const fecha = partesFecha(cita.fecha)
 
             return (
-              <div key={cita.idTurno} className="space-y-3">
-                {/* Tarjeta del turno */}
-                <article className="border border-slate-300 bg-white px-4 py-4">
-                  {/* Cabecera de tarjeta */}
-                  <div className="flex items-center justify-between border-b border-slate-300 pb-3">
-                    <span className="text-[11px] font-medium uppercase tracking-wide">
-                      Turno activo
-                    </span>
-
-                    <span className="text-xs text-slate-700">
-                      ID: #{cita.idTurno.slice(-4).toUpperCase()}
-                    </span>
+              <li key={cita.idTurno} className={styles.item}>
+                <article className={styles.cita}>
+                  <div className={styles.fecha} aria-hidden="true">
+                    <span className={styles.fechaDia}>{fecha.diaSemana}</span>
+                    <span className={styles.fechaNumero}>{fecha.numero}</span>
+                    <span className={styles.fechaMes}>{fecha.mes}</span>
                   </div>
 
-                  {/* Información */}
-                  <div className="flex flex-col gap-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-                    {/* Médico */}
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-xs font-medium uppercase">
-                          {nombresEspecialidad[cita.medico.especialidad] ??
-                            cita.medico.especialidad}
-                        </span>
-
-                        <span className="border border-slate-300 px-2 py-0.5 text-[10px] uppercase tracking-wide">
-                          Programado
-                        </span>
-
-                        {esParticular ? (
-                          cita.pagos?.[0]?.estado === 'APROBADO' ? (
-                            <span className="border border-emerald-400 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-800">
-                              ✓ Pago Aprobado
-                            </span>
-                          ) : (
-                            <span className="border border-amber-400 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800">
-                              ⚠ Pago Pendiente
-                            </span>
-                          )
+                  <div className={styles.info}>
+                    <div className={styles.etiquetas}>
+                      <span className={`${ui.etiqueta} ${ui.etiquetaPrimaria}`}>
+                        {nombreEspecialidadMedica(cita.medico.especialidad)}
+                      </span>
+                      {esParticular ? (
+                        pagoAprobado ? (
+                          <span className={`${ui.etiqueta} ${ui.etiquetaExito}`}>Pago aprobado</span>
                         ) : (
-                          <span className="border border-slate-300 bg-slate-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
-                            Cobertura Médica
-                          </span>
-                        )}
-                      </div>
-
-                      <h2 className="mt-2 text-base font-bold">
-                        Dr. {cita.medico.nombre} {cita.medico.apellido}
-                      </h2>
-                    </div>
-
-                    {/* Fecha y lugar */}
-                    <div className="space-y-2 text-sm">
-                      <p>
-                        <span className="mr-2 text-base">◷</span>
-                        {formatearFecha(cita.fecha)}, {cita.hora} hs
-                      </p>
-
-                      <p>
-                        <span className="mr-2 text-base">⌖</span>
-                        {cita.medico.consultorio ?? 'Consultorio no especificado'}
-                      </p>
-                    </div>
-
-                    {/* Acciones: Pago y Cancelación */}
-                    <div className="shrink-0 flex items-center gap-2">
-                      {esParticular && cita.pagos?.[0]?.estado !== 'APROBADO' && (
-                        <a
-                          href={`/dashboard/paciente/pagos/${cita.idTurno}`}
-                          className="border border-emerald-400 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 hover:border-emerald-500 transition-colors"
-                        >
-                          Abonar consulta
-                        </a>
-                      )}
-
-                      {esParticular && cita.pagos?.[0]?.estado === 'APROBADO' && (
-                        <button
-                          type="button"
-                          onClick={() => descargarComprobante(cita.pagos![0].idPago, cita.pagos![0].comprobante?.nombreArchivo)}
-                          disabled={descargandoComprobanteId === cita.pagos![0].idPago}
-                          className="inline-flex items-center gap-1.5 border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50 transition-colors disabled:opacity-50"
-                          title="Descargar comprobante en formato PDF"
-                        >
-                          <span aria-hidden="true">📄</span>
-                          <span>
-                            {descargandoComprobanteId === cita.pagos![0].idPago
-                              ? 'Descargando...'
-                              : 'Comprobante PDF'}
-                          </span>
-                        </button>
-                      )}
-
-                      {cancelable ? (
-                        <button
-                          type="button"
-                          onClick={() => abrirConfirmacion(cita.idTurno)}
-                          disabled={cancelando}
-                          className="border border-slate-300 bg-white px-4 py-2 text-xs font-medium hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          [ X Cancelar Turno ]
-                        </button>
+                          <span className={`${ui.etiqueta} ${ui.etiquetaAviso}`}>Pago pendiente</span>
+                        )
                       ) : (
-                        <span className="text-xs text-slate-500">
-                          Cancelación no disponible
-                        </span>
+                        <span className={`${ui.etiqueta} ${ui.etiquetaNeutra}`}>Obra social</span>
                       )}
                     </div>
+                    <h2 className={styles.medico}>
+                      {cita.medico.nombre} {cita.medico.apellido}
+                    </h2>
+                    <p className={styles.detalle}>
+                      {formatearFecha(cita.fecha)} · {cita.hora} hs
+                    </p>
+                    <p className={styles.detalle}>{cita.medico.consultorio ?? 'Consultorio a confirmar'}</p>
+                  </div>
+
+                  <div className={styles.acciones}>
+                    {esParticular && !pagoAprobado && (
+                      <Link href={`/dashboard/paciente/pagos/${cita.idTurno}`} className={`${ui.botonPrimario} ${ui.botonChico}`}>
+                        Abonar consulta
+                      </Link>
+                    )}
+
+                    {esParticular && pago && pagoAprobado && (
+                      <button
+                        type="button"
+                        onClick={() => descargarComprobante(pago.idPago, pago.comprobante?.nombreArchivo)}
+                        disabled={descargandoComprobanteId === pago.idPago}
+                        className={`${ui.botonSecundario} ${ui.botonChico}`}
+                        title="Descargar comprobante en PDF"
+                      >
+                        {descargandoComprobanteId === pago.idPago ? 'Descargando…' : 'Comprobante PDF'}
+                      </button>
+                    )}
+
+                    {cancelable ? (
+                      <button
+                        type="button"
+                        onClick={() => abrirConfirmacion(cita.idTurno)}
+                        disabled={cancelando}
+                        className={`${ui.botonPeligro} ${ui.botonChico}`}
+                      >
+                        Cancelar turno
+                      </button>
+                    ) : (
+                      <span className={styles.nota}>Ya no se puede cancelar (menos de 48 hs)</span>
+                    )}
                   </div>
                 </article>
 
                 {/* Confirmación de cancelación */}
                 {mostrandoConfirmacion && cancelable && (
-                  <section className="border border-dashed border-slate-400 bg-slate-50 p-4">
-                    <div className="border-b border-slate-300 pb-2">
-                      <span className="text-[11px] uppercase tracking-wide text-slate-600">
-                        Flujo: cancelación de turno
-                      </span>
-                    </div>
-
-                    <h2 className="mt-4 text-base font-bold">
-                      (?) Confirmar Cancelación de Turno
-                    </h2>
-
-                    <p className="mt-2 text-sm text-slate-700">
-                      ¿Desea cancelar el turno del {formatearFecha(cita.fecha)}? Esta acción
-                      liberará la vacante para otro paciente.
+                  <section className={styles.confirmacion} aria-labelledby={`cancelar-${cita.idTurno}`}>
+                    <h3 id={`cancelar-${cita.idTurno}`} className={ui.tarjetaTitulo}>
+                      ¿Cancelar este turno?
+                    </h3>
+                    <p className={ui.tarjetaTexto}>
+                      Vas a cancelar el turno del {formatearFecha(cita.fecha)} a las {cita.hora} hs. El horario va a
+                      quedar libre para otro paciente.
                     </p>
 
                     {estadoCancelacion === 'reintentando' && (
-                      <div
-                        className="mt-3 border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800"
-                        role="status"
-                        aria-live="polite"
-                      >
-                        Error de conexión, reintentando...
-                      </div>
+                      <p className={`${ui.alerta} ${ui.alertaAviso} ${ui.conIcono}`} role="status" aria-live="polite">
+                        <span className={ui.spinner} aria-hidden="true" />
+                        Error de conexión, reintentando…
+                      </p>
                     )}
 
                     {estadoCancelacion === 'verificando' && (
-                      <div
-                        className="mt-3 border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800"
-                        role="status"
-                        aria-live="polite"
-                      >
-                        Verificando estado de la cancelación...
-                      </div>
+                      <p className={`${ui.alerta} ${ui.alertaInfo} ${ui.conIcono}`} role="status" aria-live="polite">
+                        <span className={ui.spinner} aria-hidden="true" />
+                        Verificando el estado de la cancelación…
+                      </p>
                     )}
 
-                    <div className="mt-4 flex flex-wrap gap-3">
+                    <div className={styles.confirmacionAcciones}>
                       <button
                         type="button"
                         onClick={cerrarConfirmacion}
                         disabled={cancelando}
-                        className="border border-slate-300 bg-white px-4 py-2 text-xs font-semibold hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                        className={ui.botonSecundario}
                       >
-                        [ No, conservar ]
+                        No, conservar
                       </button>
-
                       <button
                         type="button"
                         onClick={cancelarCita}
                         disabled={cancelando}
-                        className="bg-black px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                        className={ui.botonPeligro}
                       >
+                        {cancelando && <span className={ui.spinner} aria-hidden="true" />}
                         {estadoCancelacion === 'cancelando'
-                          ? '[ Cancelando... ]'
+                          ? 'Cancelando…'
                           : estadoCancelacion === 'reintentando'
-                            ? '[ Error de conexión, reintentando... ]'
+                            ? 'Reintentando…'
                             : estadoCancelacion === 'verificando'
-                              ? '[ Verificando... ]'
-                              : '[ Sí, cancelar turno ]'}
+                              ? 'Verificando…'
+                              : 'Sí, cancelar turno'}
                       </button>
                     </div>
                   </section>
                 )}
-              </div>
+              </li>
             )
           })}
-        </section>
+        </ul>
       )}
-    </>
+    </div>
   )
 }

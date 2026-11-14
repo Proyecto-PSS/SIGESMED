@@ -1,23 +1,27 @@
-// Pantalla de elección de médico: filtra profesionales y deriva a sus horarios.
+// Paso 1 de la reserva: elegir profesional (con filtro por especialidad) y ver su próximo turno libre.
 import Link from 'next/link'
 import {
   especialidades,
   obtenerMedicosParaReserva,
   type EspecialidadFiltro,
 } from '@/lib/services/turnos-service'
+import { NOMBRES_ESPECIALIDADES_MEDICAS } from '@/lib/utils/especialidades-medicas'
+import BotonVolver from '@/components/ui/BotonVolver'
+import MedicoCard from '@/components/paciente/cartilla/MedicoCard'
+import FiltroEspecialidades, { type OpcionFiltro } from '@/components/paciente/cartilla/FiltroEspecialidades'
+import styles from '@/components/paciente/reserva/reserva.module.css'
 
-const nombresEspecialidad: Record<string, string> = {
-  CLINICA_MEDICA: 'Clínica Médica',
-  PEDIATRIA: 'Pediatría',
-  TRAUMATOLOGIA_ORTOPEDIA: 'Traumatología y Ortopedia',
-}
+const RUTA = '/dashboard/paciente/reservar-turno'
 
-function formatoFecha(fecha: Date, hora: string) {
-  return `${fecha.toLocaleDateString('es-AR', {
-    weekday: 'long',
-    day: '2-digit',
-    month: '2-digit',
-  })} ${hora} hs`
+// Las fechas de turno se guardan como DATE (medianoche UTC): se formatean en UTC para no correr el día.
+function formatoProximoTurno(fecha: Date, hora: string) {
+  const dia = fecha.toLocaleDateString('es-AR', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'UTC',
+  })
+  return `${dia.charAt(0).toUpperCase()}${dia.slice(1)} · ${hora} hs`
 }
 
 export default async function ReservarTurnoPage({
@@ -29,74 +33,63 @@ export default async function ReservarTurnoPage({
   const filtro = especialidades.some(({ value }) => value === params.especialidad)
     ? (params.especialidad as EspecialidadFiltro)
     : 'TODAS'
-  const medicos = await obtenerMedicosParaReserva(filtro)
+
+  // Una sola consulta: el filtro se aplica en memoria para poder mostrar la cantidad por especialidad.
+  const todos = await obtenerMedicosParaReserva('TODAS')
+  const medicos = filtro === 'TODAS' ? todos : todos.filter((m) => m.especialidad === filtro)
+
+  const opciones: OpcionFiltro[] = [
+    { valor: null, label: 'Todas', cantidad: todos.length },
+    ...Object.entries(NOMBRES_ESPECIALIDADES_MEDICAS).map(([valor, label]) => ({
+      valor,
+      label,
+      cantidad: todos.filter((m) => m.especialidad === valor).length,
+    })),
+  ]
 
   return (
-    <main className="min-h-screen bg-[#f8fafc] text-slate-900 p-4 sm:p-6 lg:p-8">
-      <div className="max-w-5xl mx-auto space-y-6">
-        <header className="border-b border-slate-200 pb-4">
-          <Link href="/dashboard/paciente" className="text-xs text-slate-500 hover:text-slate-900">
-            &larr; Volver al portal
-          </Link>
-          <h1 className="mt-3 text-xl font-bold tracking-tight">Reservar turno</h1>
-          <p className="mt-1 text-sm text-slate-600">Elegí un profesional para consultar sus horarios.</p>
-        </header>
+    <main className={styles.pagina}>
+      <header className={styles.encabezado}>
+        <BotonVolver fallback="/dashboard/paciente" />
+        <div>
+          <h1 className={styles.titulo}>Reservar turno</h1>
+          <p className={styles.subtitulo}>Elegí un profesional para ver sus días y horarios disponibles.</p>
+        </div>
+      </header>
 
-        <nav className="flex flex-wrap gap-2 border-b border-slate-200 pb-3" aria-label="Especialidades">
-          {especialidades.map((especialidad) => (
-            <Link
-              key={especialidad.value}
-              href={
-                especialidad.value === 'TODAS'
-                  ? '/dashboard/paciente/reservar-turno'
-                  : `/dashboard/paciente/reservar-turno?especialidad=${especialidad.value}`
-              }
-              className={`px-3 py-1.5 text-xs font-medium ${
-                filtro === especialidad.value
-                  ? 'font-bold text-slate-900'
-                  : 'text-slate-500 no-underline hover:text-slate-900'
-              }`}
-            >
-              {especialidad.label}
-            </Link>
-          ))}
-        </nav>
+      <FiltroEspecialidades opciones={opciones} activa={filtro === 'TODAS' ? null : filtro} rutaBase={RUTA} />
 
-        <section className="space-y-2">
-          {medicos.length === 0 ? (
-            <p className="border border-slate-200 bg-white p-6 text-sm text-slate-600">
-              No hay médicos para la especialidad seleccionada.
-            </p>
-          ) : (
-            medicos.map((medico) => (
-              <article
-                key={medico.idMedico}
-                className="flex min-h-[80px] flex-col justify-between gap-3 border border-slate-300 bg-white px-3 py-3 sm:flex-row sm:items-center"
-              >
-                <div>
-                  <h2 className="text-sm font-semibold text-slate-900">
-                    Dr. {medico.nombre} {medico.apellido}
-                  </h2>
-                  <p className="mt-1 text-xs text-slate-700">
-                    {nombresEspecialidad[medico.especialidad]}{medico.consultorio ? ` · ${medico.consultorio}` : ''}
-                  </p>
-                  <p className="mt-1 text-[10px] text-slate-600">
+      <p className={styles.resultado} aria-live="polite">
+        {medicos.length === 1 ? '1 profesional' : `${medicos.length} profesionales`}
+      </p>
+
+      {medicos.length === 0 ? (
+        <div className={styles.vacio}>No hay profesionales para la especialidad seleccionada.</div>
+      ) : (
+        <ul className={styles.grilla}>
+          {medicos.map((medico) => (
+            <li key={medico.idMedico}>
+              <MedicoCard medico={medico}>
+                <div className={`${styles.proximo} ${medico.proximoTurno ? '' : styles.proximoSinTurnos}`}>
+                  <span className={styles.proximoLabel}>Próximo turno</span>
+                  <span className={styles.proximoValor}>
                     {medico.proximoTurno
-                      ? `Próximo turno: ${formatoFecha(medico.proximoTurno.fecha, medico.proximoTurno.hora)}`
-                      : 'No hay turnos disponibles actualmente'}
-                  </p>
+                      ? formatoProximoTurno(medico.proximoTurno.fecha, medico.proximoTurno.hora)
+                      : 'Sin turnos disponibles por ahora'}
+                  </span>
                 </div>
                 <Link
-                  href={`/dashboard/paciente/reservar-turno/horarios/${medico.idMedico}`}
-                  className="border border-slate-400 px-3 py-2 text-center text-[10px] font-medium uppercase tracking-wide text-slate-900 hover:border-slate-900"
+                  href={`${RUTA}/horarios/${medico.idMedico}`}
+                  className={`${styles.boton} ${medico.proximoTurno ? '' : styles.botonSecundario}`}
                 >
-                  Ver horarios disponibles
+                  Ver horarios
+                  <span aria-hidden="true">→</span>
                 </Link>
-              </article>
-            ))
-          )}
-        </section>
-      </div>
+              </MedicoCard>
+            </li>
+          ))}
+        </ul>
+      )}
     </main>
   )
 }

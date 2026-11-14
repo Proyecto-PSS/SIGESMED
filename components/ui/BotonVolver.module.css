@@ -1,0 +1,42 @@
+/* Colores fijos (no depende del tema) para poder usarlo en cualquier página. */
+.boton {
+  /* Nunca se estira aunque el contenedor sea flex/grid. */
+  align-self: flex-start;
+  justify-self: start;
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.85rem 0.4rem 0.55rem;
+  border: 1px solid #d9dcd6;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #3c4f55;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.boton:hover {
+  border-color: #2b7a87;
+  color: #1b2f36;
+  background: #f6fafa;
+}
+
+.boton:focus-visible {
+  outline: 2px solid #2b7a87;
+  outline-offset: 2px;
+}
+
+.flecha {
+  width: 1.05rem;
+  height: 1.05rem;
+  color: #2b7a87;
+  transition: transform 0.15s ease;
+}
+
+.boton:hover .flecha {
+  transform: translateX(-2px);
+}

@@ -3,6 +3,7 @@
 // Permite seleccionar un día y un horario sin duplicar la lógica de consulta del servidor.
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
+import styles from './horarios.module.css'
 
 type Turno = {
   id: string
@@ -68,96 +69,93 @@ export default function SeleccionTurno({ turnos }: Props) {
   const diaActual = dias.find((dia) => dia.fecha === diaSeleccionado)
   const disponibles = diaActual?.turnos.filter((turno) => turno.estado === 'DISPONIBLE') ?? []
   const seleccionado = disponibles.find((turno) => turno.id === turnoSeleccionado)
+  const duracion = seleccionado?.duracionMinutos ?? disponibles[0]?.duracionMinutos
 
   if (dias.length === 0) {
     return (
-      <p className="border border-slate-200 bg-white p-6 text-sm text-slate-600">
-        No hay días disponibles para este médico.
-      </p>
+      <div className={styles.seleccion}>
+        <p className={styles.vacio}>Este profesional no tiene días disponibles por el momento.</p>
+      </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      <section>
-        <div className="mb-2 flex items-center justify-between border-b border-slate-300 pb-1">
-          <h2 className="text-xs font-bold uppercase">1. Seleccionar día</h2>
-          <div className="flex flex-wrap justify-end gap-2">
-            {meses.map((mes) => (
-              <button
-                key={mes.mes}
-                type="button"
-                onClick={() => {
-                  setMesSeleccionado(mes.mes)
-                  setDiaSeleccionado(mes.turnos[0]?.fecha ?? '')
-                  setTurnoSeleccionado(null)
-                }}
-                className={`text-[10px] capitalize ${
-                  mes.mes === mesSeleccionado ? 'font-bold text-slate-900' : 'text-slate-500'
-                }`}
-              >
-                {fechaCorta(`${mes.mes}-01`).mes}
-              </button>
-            ))}
-          </div>
+    <div className={styles.seleccion}>
+      <section className={styles.bloque} aria-labelledby="titulo-dia">
+        <div className={styles.bloqueEncabezado}>
+          <h2 id="titulo-dia" className={styles.bloqueTitulo}>
+            <span className={styles.bloqueNumero}>1</span>
+            Elegí el día
+          </h2>
+          {meses.length > 1 && (
+            <div className={styles.meses} role="group" aria-label="Mes">
+              {meses.map((mes) => (
+                <button
+                  key={mes.mes}
+                  type="button"
+                  onClick={() => {
+                    setMesSeleccionado(mes.mes)
+                    setDiaSeleccionado(mes.turnos[0]?.fecha ?? '')
+                    setTurnoSeleccionado(null)
+                  }}
+                  className={`${styles.mes} ${mes.mes === mesSeleccionado ? styles.mesActivo : ''}`}
+                  aria-pressed={mes.mes === mesSeleccionado}
+                >
+                  {fechaCorta(`${mes.mes}-01`).mes}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+
+        <div className={styles.dias}>
           {dias.map((dia) => {
             const info = fechaCorta(dia.fecha)
-            const tieneDisponibles = dia.turnos.some((turno) => turno.estado === 'DISPONIBLE')
-            const seleccionado = dia.fecha === diaSeleccionado
+            const libres = dia.turnos.filter((turno) => turno.estado === 'DISPONIBLE').length
+            const activo = dia.fecha === diaSeleccionado
 
             return (
               <button
                 key={dia.fecha}
                 type="button"
-                disabled={!tieneDisponibles}
+                disabled={libres === 0}
                 onClick={() => {
                   setDiaSeleccionado(dia.fecha)
                   setTurnoSeleccionado(null)
                 }}
-                className={`border px-2 py-3 text-center text-xs uppercase ${
-                  seleccionado
-                    ? 'border-black bg-black text-white'
-                    : tieneDisponibles
-                      ? 'border-slate-200 bg-white hover:border-slate-500'
-                      : 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400'
-                }`}
+                className={`${styles.dia} ${activo && libres > 0 ? styles.diaActivo : ''}`}
+                aria-pressed={activo}
+                aria-label={`${info.dia} ${info.numero} de ${info.mes}: ${libres === 0 ? 'sin horarios' : `${libres} horarios libres`}`}
               >
-                <span className="block text-[10px]">{info.dia.slice(0, 3)}</span>
-                <span className="my-1 block text-base font-semibold">{info.numero}</span>
-                <span className="block text-[10px]">
-                  {tieneDisponibles ? (seleccionado ? 'Elegido' : 'Libre') : 'Agotado'}
-                </span>
+                <span className={styles.diaNombre}>{info.dia.slice(0, 3)}</span>
+                <span className={styles.diaNumero}>{info.numero}</span>
+                <span className={styles.diaEstado}>{libres === 0 ? 'Agotado' : `${libres} libres`}</span>
               </button>
             )
           })}
         </div>
       </section>
 
-      <section>
-        <div className="mb-2 flex items-center justify-between border-b border-slate-300 pb-1">
-          <h2 className="text-xs font-bold uppercase">
-            2. Seleccionar horario {diaActual && `(${fechaCorta(diaActual.fecha).dia.slice(0, 3)} ${fechaCorta(diaActual.fecha).numero})`}
+      <section className={styles.bloque} aria-labelledby="titulo-hora">
+        <div className={styles.bloqueEncabezado}>
+          <h2 id="titulo-hora" className={styles.bloqueTitulo}>
+            <span className={styles.bloqueNumero}>2</span>
+            Elegí el horario
           </h2>
-          <span className="text-[10px] text-slate-600">
-            Duración: {seleccionado?.duracionMinutos ?? disponibles[0]?.duracionMinutos ?? 0} min
-          </span>
+          {duracion ? <span className={styles.nota}>Duración de la consulta: {duracion} min</span> : null}
         </div>
+
         {disponibles.length === 0 ? (
-          <p className="text-xs text-slate-500">No hay horarios seleccionables para este día.</p>
+          <p className={styles.vacio}>No hay horarios libres para este día. Probá con otro.</p>
         ) : (
-          <div className="flex flex-wrap gap-2">
+          <div className={styles.horarios}>
             {disponibles.map((turno) => (
               <button
                 key={turno.id}
                 type="button"
                 onClick={() => setTurnoSeleccionado(turno.id)}
-                className={`border px-3 py-2 text-xs ${
-                  turno.id === turnoSeleccionado
-                    ? 'border-black bg-black text-white'
-                    : 'border-slate-200 bg-white hover:border-slate-500'
-                }`}
+                className={`${styles.hora} ${turno.id === turnoSeleccionado ? styles.horaActiva : ''}`}
+                aria-pressed={turno.id === turnoSeleccionado}
               >
                 {turno.hora}
               </button>
@@ -166,30 +164,27 @@ export default function SeleccionTurno({ turnos }: Props) {
         )}
       </section>
 
-      <section className="flex flex-col gap-4 border border-slate-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-xs font-semibold uppercase">
-          {seleccionado ? (
-            <>
-              Turno seleccionado:{' '}
-              <span className="normal-case">
-                {fechaCorta(seleccionado.fecha).dia} {fechaCorta(seleccionado.fecha).numero}{' '}
-                {fechaCorta(seleccionado.fecha).mes} - {seleccionado.hora} hs
-              </span>
-            </>
-          ) : (
-            'Seleccioná un día y un horario'
-          )}
-        </p>
+      <section className={styles.resumen} aria-live="polite">
+        <div>
+          <span className={styles.resumenLabel}>Tu turno</span>
+          <span className={styles.resumenValor}>
+            {seleccionado
+              ? `${fechaCorta(seleccionado.fecha).dia} ${fechaCorta(seleccionado.fecha).numero} de ${fechaCorta(seleccionado.fecha).mes} · ${seleccionado.hora} hs`
+              : 'Elegí un día y un horario'}
+          </span>
+        </div>
         {seleccionado ? (
           <Link
             href={`/dashboard/paciente/reservar-turno/modalidad?turno=${seleccionado.id}`}
-            className="bg-black px-4 py-3 text-center text-xs font-semibold text-white hover:bg-slate-800"
+            className={styles.continuar}
           >
-            Continuar a Modalidad
+            Continuar
+            <span aria-hidden="true">→</span>
           </Link>
         ) : (
-          <span className="cursor-not-allowed bg-slate-300 px-4 py-3 text-center text-xs font-semibold text-slate-500">
-            Continuar a Modalidad
+          <span className={`${styles.continuar} ${styles.continuarDeshabilitado}`} aria-disabled="true">
+            Continuar
+            <span aria-hidden="true">→</span>
           </span>
         )}
       </section>

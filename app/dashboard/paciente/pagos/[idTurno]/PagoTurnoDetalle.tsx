@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import styles from './pago.module.css'
+import BotonVolver from '@/components/ui/BotonVolver'
 
 interface Props {
   idTurno: string
@@ -384,6 +385,9 @@ export default function PagoTurnoDetalle({ idTurno, turno, pagoInicial, tarifa, 
 
   return (
     <div className={styles.contenedor}>
+      <div className={styles.volver}>
+        <BotonVolver fallback="/dashboard/paciente/mis-citas" />
+      </div>
       <main className={styles.cardPrincipal}>
         {/* Cabecera */}
         <header className={styles.cabecera}>
@@ -433,6 +437,8 @@ export default function PagoTurnoDetalle({ idTurno, turno, pagoInicial, tarifa, 
             </div>
           </section>
 
+          {/* Columna derecha: comprobante aprobado o formulario de pago */}
+          <div className={styles.columnaPago}>
           {/* VOUCHER DE PAGO APROBADO */}
           {yaAprobado ? (
             <section className={styles.voucherAprobado} role="status" aria-live="polite">
@@ -896,6 +902,7 @@ export default function PagoTurnoDetalle({ idTurno, turno, pagoInicial, tarifa, 
               </footer>
             </>
           )}
+          </div>
         </div>
       </main>
     </div>

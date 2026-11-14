@@ -1,0 +1,90 @@
+/* Triple selector en el link: le gana a la regla global `a { color: #000 }`. */
+a.tarjeta.tarjeta {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  /* Contenido pegado abajo de la tarjeta. */
+  justify-content: flex-end;
+  min-height: 28rem;
+  padding: clamp(1rem, 1.5vw, 1.5rem) clamp(1.25rem, 2vw, 2rem) clamp(1.5rem, 2vw, 2rem);
+  border-radius: 10px;
+  overflow: hidden;
+  color: #ffffff;
+  text-decoration: none;
+  /* Capas: sombreado azul oscuro sobre toda la foto (más fuerte arriba y abajo), la foto y un respaldo si falta. */
+  background:
+    linear-gradient(
+      180deg,
+      rgba(14, 26, 44, 0.6) 0%,
+      rgba(14, 26, 44, 0.35) 22%,
+      rgba(14, 26, 44, 0.4) 45%,
+      rgba(12, 22, 40, 0.85) 70%,
+      rgba(10, 20, 36, 0.96) 100%
+    ),
+    linear-gradient(rgba(20, 40, 70, 0.25), rgba(20, 40, 70, 0.25)),
+    var(--acceso-imagen) center / cover no-repeat,
+    linear-gradient(160deg, #5f7f86 0%, #34525b 55%, #1b2f36 100%);
+  box-shadow: 0 1px 2px rgba(27, 47, 54, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+a.tarjeta.tarjeta:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgba(27, 47, 54, 0.22);
+}
+
+a.tarjeta.tarjeta:focus-visible {
+  outline: 3px solid var(--color-primario);
+  outline-offset: 3px;
+}
+
+.bajada {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* Misma serif que el título del inicio ("Excelencia en la Gestión Médica"). */
+.titulo {
+  margin-top: 0.5rem;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: clamp(1.9rem, 2.6vw, 2.6rem);
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  line-height: 1.05;
+  color: var(--color-crema);
+}
+
+.descripcion {
+  margin-top: 0.5rem;
+  max-width: 30rem;
+  font-size: clamp(0.8rem, 0.95vw, 0.95rem);
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.boton {
+  margin-top: 1.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.7rem 1rem;
+  border-radius: 4px;
+  background: #ffffff;
+  color: var(--color-tinta);
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background 0.2s ease;
+}
+
+a.tarjeta.tarjeta:hover .boton {
+  background: #eef5f6;
+}
+
+@media (max-width: 720px) {
+  a.tarjeta.tarjeta {
+    min-height: 22rem;
+  }
+}

@@ -1,28 +1,27 @@
+/* Mismo fondo que el resto del portal (lo da el layout). */
 .contenedor {
-  min-height: 100vh;
-  background-color: #f1f5f9;
-  background-image: radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.05) 0px, transparent 50%),
-                    radial-gradient(at 100% 100%, rgba(14, 165, 233, 0.05) 0px, transparent 50%);
-  padding: 2rem 1rem;
-  color: #0f172a;
+  padding: clamp(1.5rem, 3vw, 2.5rem) clamp(1rem, 2.5vw, 2rem) 4rem;
+  color: var(--color-tinta);
   font-family: inherit;
 }
 
+/* Ocupa todo el ancho disponible (sin overflow: hidden para que el resumen pueda quedar fijo). */
 .cardPrincipal {
-  max-width: 680px;
-  margin: 0 auto;
+  width: 100%;
   background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.06), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
-  overflow: hidden;
-  transition: all 0.3s ease;
+  border: 1px solid #e4e4dd;
+  border-radius: 10px;
+}
+
+.volver {
+  margin-bottom: 1rem;
 }
 
 .cabecera {
   padding: 1.75rem 2rem 1.25rem;
-  border-bottom: 1px solid #f1f5f9;
-  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border-radius: 10px 10px 0 0;
+  border-bottom: 1px solid #efefe9;
+  background: #ffffff;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -36,25 +35,25 @@
 .superTitulo {
   display: block;
   font-size: 0.725rem;
-  font-family: monospace;
-  font-weight: 700;
+    font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #6366f1;
+  color: var(--color-primario);
   margin-bottom: 0.25rem;
 }
 
 .titulo {
+  font-family: var(--font-display), Georgia, serif;
   font-size: 1.4rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--color-tinta);
   margin: 0 0 0.25rem 0;
   letter-spacing: -0.02em;
 }
 
 .subtitulo {
   font-size: 0.875rem;
-  color: #64748b;
+  color: #6b7b80;
   margin: 0;
 }
 
@@ -72,17 +71,41 @@
   white-space: nowrap;
 }
 
+/* Dos columnas: resumen del turno (fijo al bajar) | formulario o comprobante. */
 .cuerpo {
-  padding: 1.75rem 2rem;
+  padding: clamp(1.25rem, 2.5vw, 2rem);
+  display: grid;
+  grid-template-columns: minmax(18rem, 26rem) minmax(0, 1fr);
+  align-items: start;
+  gap: clamp(1.25rem, 3vw, 2.5rem);
+}
+
+.cuerpo > .resumenTurno {
+  position: sticky;
+  top: 5rem;
+}
+
+.columnaPago {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .cuerpo {
+    grid-template-columns: 1fr;
+  }
+
+  .cuerpo > .resumenTurno {
+    position: static;
+  }
 }
 
 /* Resumen del Turno */
 .resumenTurno {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: #fafaf7;
+  border: 1px solid #e4e4dd;
   border-radius: 12px;
   padding: 1.25rem;
   display: flex;
@@ -98,13 +121,13 @@
 }
 
 .etiquetaDato {
-  color: #64748b;
+  color: #6b7b80;
   font-weight: 500;
 }
 
 .valorDato {
   font-weight: 600;
-  color: #0f172a;
+  color: var(--color-tinta);
   text-align: right;
 }
 
@@ -120,7 +143,7 @@
 .montoEtiqueta {
   font-size: 0.925rem;
   font-weight: 600;
-  color: #1e293b;
+  color: var(--color-tinta);
 }
 
 .montoDestacado {
@@ -308,7 +331,7 @@
 .cvvBarra {
   width: 100%;
   background: #ffffff;
-  color: #0f172a;
+  color: var(--color-tinta);
   height: 34px;
   border-radius: 4px;
   display: flex;
@@ -338,7 +361,7 @@
 .toolbarTitulo {
   font-size: 0.75rem;
   font-weight: 600;
-  color: #475569;
+  color: var(--color-tinta-suave);
   margin-bottom: 0.5rem;
   display: flex;
   align-items: center;
@@ -358,7 +381,7 @@
   padding: 0.3rem 0.6rem;
   font-size: 0.725rem;
   font-weight: 600;
-  color: #334155;
+  color: var(--color-tinta-suave);
   cursor: pointer;
   transition: all 0.15s ease;
 }
@@ -366,7 +389,7 @@
 .btnPillPrueba:hover {
   background: #f1f5f9;
   border-color: #94a3b8;
-  color: #0f172a;
+  color: var(--color-tinta);
 }
 
 /* Formulario */
@@ -397,7 +420,7 @@
 .labelCampo {
   font-size: 0.8125rem;
   font-weight: 600;
-  color: #334155;
+  color: var(--color-tinta-suave);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -413,7 +436,7 @@
   width: 100%;
   padding: 0.75rem 0.875rem;
   font-size: 0.9375rem;
-  color: #0f172a;
+  color: var(--color-tinta);
   background-color: #ffffff;
   border: 1.5px solid #cbd5e1;
   border-radius: 8px;
@@ -423,8 +446,8 @@
 }
 
 .inputControl:focus {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  border-color: var(--color-primario);
+  box-shadow: 0 0 0 3px rgba(43, 122, 135, 0.15);
 }
 
 .inputValido {
@@ -441,7 +464,7 @@
   right: 0.75rem;
   font-size: 0.75rem;
   font-weight: 800;
-  color: #6366f1;
+  color: var(--color-primario);
   background: #f1f5f9;
   padding: 0.2rem 0.45rem;
   border-radius: 4px;
@@ -459,7 +482,7 @@
   width: 100%;
   padding: 0.75rem 0.875rem;
   font-size: 0.9rem;
-  color: #0f172a;
+  color: var(--color-tinta);
   background-color: #ffffff;
   border: 1.5px solid #cbd5e1;
   border-radius: 8px;
@@ -469,33 +492,30 @@
 }
 
 .selectControl:focus {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  border-color: var(--color-primario);
+  box-shadow: 0 0 0 3px rgba(43, 122, 135, 0.15);
 }
 
 /* Botones de acción */
 .btnPrimario {
   width: 100%;
-  padding: 0.95rem 1.5rem;
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  padding: 0.9rem 1.25rem;
+  background: var(--color-primario);
   color: #ffffff;
   border: none;
-  border-radius: 10px;
-  font-weight: 700;
-  font-size: 1rem;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 600;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.6rem;
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
-  transition: all 0.2s ease;
+  gap: 0.5rem;
+  transition: background 0.15s ease;
 }
 
 .btnPrimario:hover:not(:disabled) {
-  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.2);
+  background: var(--color-primario-hover);
 }
 
 .btnPrimario:active:not(:disabled) {
@@ -514,7 +534,7 @@
   width: 100%;
   padding: 0.75rem 1rem;
   background: transparent;
-  color: #475569;
+  color: var(--color-tinta-suave);
   border: 1px solid #cbd5e1;
   border-radius: 8px;
   font-weight: 600;
@@ -528,13 +548,13 @@
 .btnSecundario:hover {
   background: #f8fafc;
   border-color: #94a3b8;
-  color: #0f172a;
+  color: var(--color-tinta);
 }
 
 .btnImprimir {
   background: #f1f5f9;
   border: 1px solid #cbd5e1;
-  color: #1e293b;
+  color: var(--color-tinta);
   padding: 0.75rem 1.25rem;
   border-radius: 8px;
   font-weight: 600;
@@ -550,7 +570,7 @@
 
 .btnImprimir:hover {
   background: #e2e8f0;
-  color: #0f172a;
+  color: var(--color-tinta);
 }
 
 /* Insignias de confianza */
@@ -566,7 +586,7 @@
 
 .seguridadTexto {
   font-size: 0.75rem;
-  color: #64748b;
+  color: #6b7b80;
   display: flex;
   align-items: center;
   gap: 0.35rem;
@@ -580,7 +600,7 @@
 .selloTag {
   font-size: 0.65rem;
   font-weight: 700;
-  color: #475569;
+  color: var(--color-tinta-suave);
   background: #f1f5f9;
   padding: 0.2rem 0.5rem;
   border-radius: 4px;
@@ -673,7 +693,7 @@
   width: 1rem;
   height: 1rem;
   border: 2px solid #cbd5e1;
-  border-top-color: #0f172a;
+  border-top-color: var(--color-tinta);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }
@@ -721,7 +741,7 @@
   gap: 0.5rem;
   padding: 0.6rem 1rem;
   background-color: #ffffff;
-  color: #0f172a;
+  color: var(--color-tinta);
   border: 1px solid #cbd5e1;
   border-radius: 6px;
   font-weight: 600;

@@ -1,14 +1,11 @@
-// Pantalla de selección de día y horario para el médico elegido.
-import Link from 'next/link'
+// Paso 2 de la reserva: selección de día y horario para el médico elegido.
 import { notFound } from 'next/navigation'
 import { obtenerMedicoConTurnosDisponibles } from '@/lib/services/turnos-service'
+import BotonVolver from '@/components/ui/BotonVolver'
+import MedicoCard from '@/components/paciente/cartilla/MedicoCard'
+import reserva from '@/components/paciente/reserva/reserva.module.css'
 import SeleccionTurno from './SeleccionTurno'
-
-const nombresEspecialidad: Record<string, string> = {
-  CLINICA_MEDICA: 'Clínica Médica',
-  PEDIATRIA: 'Pediatría',
-  TRAUMATOLOGIA_ORTOPEDIA: 'Traumatología y Ortopedia',
-}
+import styles from './horarios.module.css'
 
 export default async function HorariosMedicoPage({
   params,
@@ -31,25 +28,19 @@ export default async function HorariosMedicoPage({
   }))
 
   return (
-    <main className="min-h-screen bg-[#f8fafc] text-slate-900 p-4 sm:p-6 lg:p-8">
-      <div className="max-w-5xl mx-auto space-y-6">
-        <header className="border-b border-slate-200 pb-4">
-          <Link href="/dashboard/paciente/reservar-turno" className="text-xs text-slate-500 hover:text-slate-900">
-            &larr; Volver a médicos
-          </Link>
-          <h1 className="mt-3 text-xl font-bold">Selección de Día y Horario</h1>
-        </header>
+    <main className={reserva.pagina}>
+      <header className={reserva.encabezado}>
+        <BotonVolver fallback="/dashboard/paciente/reservar-turno" />
+        <div>
+          <h1 className={reserva.titulo}>Elegí día y horario</h1>
+          <p className={reserva.subtitulo}>Los días en gris no tienen horarios libres.</p>
+        </div>
+      </header>
 
-        <section className="border border-slate-200 bg-white px-3 py-3">
-          <h2 className="text-sm font-semibold">
-            {medico.nombre} {medico.apellido}
-          </h2>
-          <p className="mt-1 text-xs text-slate-600">
-            {nombresEspecialidad[medico.especialidad]}
-            {medico.consultorio ? ` · ${medico.consultorio}` : ''}
-          </p>
-        </section>
-
+      <div className={styles.columnas}>
+        <aside className={styles.ficha}>
+          <MedicoCard medico={medico} />
+        </aside>
         <SeleccionTurno turnos={turnos} />
       </div>
     </main>

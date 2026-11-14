@@ -1,0 +1,280 @@
+/* Ficha del médico a la izquierda (fija al hacer scroll) y selección a la derecha. */
+.columnas {
+  display: grid;
+  grid-template-columns: minmax(16rem, 20rem) minmax(0, 1fr);
+  gap: clamp(1rem, 2.5vw, 2rem);
+  align-items: start;
+}
+
+.ficha {
+  position: sticky;
+  top: 5rem;
+}
+
+@media (max-width: 860px) {
+  .columnas {
+    grid-template-columns: 1fr;
+  }
+
+  .ficha {
+    position: static;
+  }
+}
+
+/* ---- Selección de turno ---- */
+.seleccion {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.bloque {
+  padding: 1.5rem;
+  background: #ffffff;
+  border: 1px solid #e4e4dd;
+  border-radius: 10px;
+}
+
+.bloqueEncabezado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1.1rem;
+}
+
+.bloqueTitulo {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-tinta);
+}
+
+.bloqueNumero {
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: #e3efef;
+  color: var(--color-primario);
+  font-size: 0.75rem;
+}
+
+.nota {
+  font-size: 0.8rem;
+  color: #6b7b80;
+}
+
+/* Meses */
+.meses {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.2rem;
+  border-radius: 999px;
+  background: var(--color-hueso);
+}
+
+.mes {
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  color: var(--color-tinta-suave);
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-transform: capitalize;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.mes:hover {
+  color: var(--color-tinta);
+}
+
+.mesActivo {
+  background: #ffffff;
+  color: var(--color-tinta);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(27, 47, 54, 0.12);
+}
+
+/* Días */
+.dias {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4.75rem, 1fr));
+  gap: 0.6rem;
+}
+
+.dia {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.7rem 0.4rem;
+  border: 1px solid #e4e4dd;
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--color-tinta);
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.dia:hover:not(:disabled) {
+  border-color: var(--color-primario);
+  transform: translateY(-1px);
+}
+
+.diaNombre {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b7b80;
+}
+
+.diaNumero {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.diaEstado {
+  font-size: 0.68rem;
+  color: var(--color-primario);
+  font-weight: 600;
+}
+
+.diaActivo {
+  border-color: var(--color-primario);
+  background: var(--color-primario);
+  color: #ffffff;
+}
+
+.diaActivo .diaNombre,
+.diaActivo .diaEstado {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.dia:disabled {
+  background: var(--color-hueso);
+  border-style: dashed;
+  color: #a3adb0;
+}
+
+.dia:disabled .diaNombre,
+.dia:disabled .diaEstado {
+  color: #a3adb0;
+}
+
+/* Horarios */
+.horarios {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
+  gap: 0.5rem;
+}
+
+.hora {
+  padding: 0.65rem 0.5rem;
+  border: 1px solid #d9dcd6;
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--color-tinta);
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.hora:hover {
+  border-color: var(--color-primario);
+  background: #f6fafa;
+}
+
+.horaActiva,
+.horaActiva:hover {
+  border-color: var(--color-primario);
+  background: var(--color-primario);
+  color: #ffffff;
+}
+
+.dia:focus-visible,
+.hora:focus-visible,
+.mes:focus-visible {
+  outline: 2px solid var(--color-primario);
+  outline-offset: 2px;
+}
+
+.vacio {
+  padding: 1.25rem;
+  border: 1px dashed #cfd3cc;
+  border-radius: 8px;
+  color: var(--color-tinta-suave);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+/* Resumen: queda fijo abajo mientras se elige. */
+.resumen {
+  position: sticky;
+  bottom: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-radius: 10px;
+  background: var(--color-tinta);
+  color: #ffffff;
+  box-shadow: 0 10px 30px rgba(27, 47, 54, 0.25);
+}
+
+.resumenLabel {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.resumenValor {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.resumenValor::first-letter {
+  text-transform: uppercase;
+}
+
+/* Triple clase: le gana a la regla global `a { color: #000 }`. */
+.seleccion .resumen .continuar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.75rem 1.25rem;
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--color-tinta);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.seleccion .resumen .continuar:hover {
+  background: #e3efef;
+}
+
+.seleccion .resumen .continuarDeshabilitado {
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.5);
+  cursor: not-allowed;
+}
+
+.seleccion .resumen .continuarDeshabilitado:hover {
+  background: rgba(255, 255, 255, 0.15);
+}

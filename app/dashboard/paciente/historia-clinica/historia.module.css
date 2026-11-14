@@ -1,0 +1,169 @@
+/* Filtros */
+.filtros {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.filtrosFila {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  align-items: end;
+  gap: 1rem;
+}
+
+.filtrosAcciones {
+  display: flex;
+  gap: 0.5rem;
+}
+
+@media (max-width: 860px) {
+  .filtrosFila {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .filtrosAcciones {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 480px) {
+  .filtrosFila {
+    grid-template-columns: 1fr;
+  }
+}
+
+.estados {
+  padding-top: 1.25rem;
+  border-top: 1px solid #efefe9;
+}
+
+.estadosLabel {
+  display: block;
+  margin-bottom: 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #8a979b;
+}
+
+.resultado {
+  margin: 1.5rem 0 0.75rem;
+  font-size: 0.85rem;
+  color: #6b7b80;
+}
+
+/* Tabla (escritorio) */
+.tablaContenedor {
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid #e4e4dd;
+  border-radius: 10px;
+}
+
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.tabla th {
+  padding: 0.85rem 1.25rem;
+  background: #fafaf7;
+  border-bottom: 1px solid #e4e4dd;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #8a979b;
+}
+
+.tabla td {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #efefe9;
+  font-size: 0.92rem;
+  color: var(--color-tinta);
+  vertical-align: middle;
+}
+
+.tabla tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.tabla tbody tr:hover td {
+  background: #fcfcfa;
+}
+
+.derecha {
+  text-align: right;
+}
+
+.fecha {
+  display: block;
+  font-weight: 600;
+}
+
+.secundario {
+  display: block;
+  margin-top: 0.1rem;
+  font-size: 0.82rem;
+  color: #6b7b80;
+}
+
+.sinAccion {
+  color: #c4cacb;
+}
+
+/* Lista (celular) */
+.listaMovil {
+  display: none;
+  list-style: none;
+}
+
+.itemMovil {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #efefe9;
+}
+
+.itemMovil:last-child {
+  border-bottom: 0;
+}
+
+.itemMovilFila {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+@media (max-width: 760px) {
+  .tabla {
+    display: none;
+  }
+
+  .listaMovil {
+    display: block;
+  }
+}
+
+/* Esqueleto de carga */
+.esqueleto {
+  display: block;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #ecece6 0%, #f5f5f0 50%, #ecece6 100%);
+  background-size: 200% 100%;
+  animation: brillo 1.4s ease-in-out infinite;
+}
+
+@keyframes brillo {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .esqueleto { animation: none; }
+}
