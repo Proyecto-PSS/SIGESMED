@@ -1,0 +1,513 @@
+/* Inventario de vacunas (US-31 a US-33). Usa los tokens del portal; los estados de stock
+   llevan siempre ícono y texto, no solo color. */
+.encabezado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px 24px;
+  margin-bottom: 24px;
+}
+
+.eyebrow {
+  display: block;
+  margin-bottom: 6px;
+  color: #6b7b80;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.aviso {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.cerrarAviso {
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.nota {
+  color: #6b7b80;
+  font-size: 12px;
+}
+
+/* ---------- Tarjetas ---------- */
+.tarjeta {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding: 22px 24px;
+  border: 1px solid #e4e4dd;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(27, 47, 54, 0.05);
+}
+
+.tarjetaTitulo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  color: var(--color-tinta);
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.numero {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border-radius: 8px;
+  background: #e6f2f3;
+  color: var(--color-primario);
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-size: 13px;
+}
+
+/* ---------- Indicadores ---------- */
+.indicadores {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.indicador {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 18px 20px;
+  border: 1px solid #e4e4dd;
+  border-top: 4px solid var(--color-primario);
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.indicadorCritico {
+  border-color: #f5c2bd;
+  border-top-color: #b42318;
+  background: #fff7f6;
+}
+
+.indicadorAviso {
+  border-color: #f3dca5;
+  border-top-color: #b45309;
+  background: #fffbeb;
+}
+
+.indicadorEtiqueta {
+  color: var(--color-tinta-suave);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.indicadorValor {
+  color: var(--color-tinta);
+  font-size: 30px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.indicadorDetalle {
+  color: #6b7b80;
+  font-size: 12px;
+}
+
+.indicadorCritico .indicadorEtiqueta,
+.indicadorCritico .indicadorDetalle {
+  color: #b42318;
+}
+
+.indicadorAviso .indicadorEtiqueta,
+.indicadorAviso .indicadorDetalle {
+  color: #92400e;
+}
+
+/* ---------- Filtros ---------- */
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.buscador {
+  min-width: 240px;
+  flex: 1;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  padding: 7px 14px;
+  border: 1px solid #d9dcd6;
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--color-tinta-suave);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.chip:hover {
+  border-color: var(--color-primario);
+  color: var(--color-tinta);
+}
+
+.chipCRITICO_BAJO {
+  border-color: #f5c2bd;
+  background: #fff7f6;
+  color: #b42318;
+}
+
+.chipPROXIMO_A_VENCER {
+  border-color: #f3dca5;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.chipActivo,
+.chipActivo:hover {
+  border-color: var(--color-tinta);
+  background: var(--color-tinta);
+  color: #ffffff;
+}
+
+/* ---------- Tabla ---------- */
+.tablaEncabezado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tablaContenedor {
+  overflow-x: auto;
+  border: 1px solid #e4e4dd;
+  border-radius: 12px;
+}
+
+.tabla {
+  width: 100%;
+  min-width: 820px;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+}
+
+.tabla th {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e4e4dd;
+  background: #fafaf7;
+  color: var(--color-tinta-suave);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.tabla td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #f1f1ec;
+  vertical-align: middle;
+}
+
+.tabla tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.filaCRITICO td {
+  background: #fff7f6;
+}
+
+.filaBAJO td {
+  background: #fffcf2;
+}
+
+.columnaAccion {
+  text-align: right;
+}
+
+.vacunaNombre {
+  display: block;
+  color: var(--color-tinta);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.vacunaDetalle {
+  display: block;
+  margin-top: 2px;
+  color: #6b7b80;
+  font-size: 12px;
+}
+
+.categoria {
+  display: inline-block;
+  padding: 3px 9px;
+  border: 1px solid #d9dcd6;
+  border-radius: 6px;
+  background: #fafaf7;
+  color: var(--color-tinta-suave);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.lote {
+  display: block;
+  color: var(--color-tinta);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.vencimiento {
+  display: block;
+  margin-top: 2px;
+  color: #6b7b80;
+  font-size: 12px;
+}
+
+.vencimientoProximo {
+  color: #b45309;
+  font-weight: 700;
+}
+
+/* Insignia de stock: color + ícono + texto. */
+.stock {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.stock.nivelCritico {
+  border-color: #f5c2bd;
+  background: #fff1f0;
+  color: #b42318;
+}
+
+.stock.nivelBajo {
+  border-color: #f3dca5;
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.stock.nivelNormal {
+  border-color: #a7f3d0;
+  background: #ecfdf5;
+  color: #047857;
+}
+
+/* Barra de nivel respecto del umbral de alerta. */
+.nivel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nivelPista {
+  width: 110px;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #ecece6;
+}
+
+.nivelBarra {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+}
+
+.nivelBarra.nivelCritico {
+  background: #b42318;
+}
+
+.nivelBarra.nivelBajo {
+  background: #d08a16;
+}
+
+.nivelBarra.nivelNormal {
+  background: #1a8f5a;
+}
+
+.nivelTexto {
+  color: var(--color-tinta-suave);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ---------- Modal de actualización ---------- */
+.modalFondo {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(27, 47, 54, 0.6);
+  backdrop-filter: blur(2px);
+}
+
+.modal {
+  display: flex;
+  width: 100%;
+  max-width: 460px;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+  border: 1px solid #e4e4dd;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 20px 40px -12px rgba(27, 47, 54, 0.35);
+}
+
+.modalTitulo {
+  margin: 0;
+  color: var(--color-tinta);
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.modalTexto {
+  margin: 0;
+  color: var(--color-tinta-suave);
+  font-size: 14px;
+}
+
+.modalAcciones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* ---------- Alta de vacuna ---------- */
+.alta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  align-items: start;
+  gap: 20px;
+}
+
+.altaCampos {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.grilla {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.altaAcciones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.resumen {
+  position: sticky;
+  top: calc(var(--alto-navbar, 76px) + 16px);
+  overflow: hidden;
+  border: 1px solid #e4e4dd;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.resumenTitulo {
+  margin: 0;
+  padding: 14px 18px;
+  background: var(--color-tinta);
+  color: #ffffff;
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.resumenDatos {
+  margin: 0;
+  padding: 6px 18px 12px;
+}
+
+.resumenFila {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px dashed #e4e4dd;
+  font-size: 13px;
+}
+
+.resumenFila:last-child {
+  border-bottom: none;
+}
+
+.resumenFila dt {
+  color: #6b7b80;
+}
+
+.resumenFila dd {
+  margin: 0;
+  color: var(--color-tinta);
+  font-weight: 700;
+  text-align: right;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1000px) {
+  .indicadores {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .alta {
+    grid-template-columns: 1fr;
+  }
+
+  .resumen {
+    position: static;
+  }
+}
+
+@media (max-width: 560px) {
+  .indicadores {
+    grid-template-columns: 1fr;
+  }
+
+  .tarjeta {
+    padding: 18px 16px;
+  }
+}

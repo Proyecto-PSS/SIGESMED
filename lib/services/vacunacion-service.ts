@@ -1,7 +1,25 @@
 // Servicio integral de gestión de stock de vacunas, lotes y turnos de vacunación con transacciones atómicas (US-20).
 import { prisma } from '@/lib/prisma'
 import type { TipoMovimientoStock, EstadoTurnoVacunacion } from '@/lib/generated/prisma/client'
-import { validarMovimientoStock, validarAsignarTurno, type DatosMovimientoStockInput, type DatosAsignarTurnoInput } from '@/lib/validation/vacunacion'
+import {
+  validarMovimientoStock,
+  validarAsignarTurno,
+  validarAltaVacuna,
+  validarActualizacionStock,
+  type DatosMovimientoStockInput,
+  type DatosAsignarTurnoInput,
+} from '@/lib/validation/vacunacion'
+
+function errorConEstado(message: string, statusCode: number, code?: string) {
+  const err = new Error(message) as Error & { statusCode?: number; code?: string }
+  err.statusCode = statusCode
+  if (code) err.code = code
+  return err
+}
+
+function esErrorNombreDuplicado(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && (error as { code?: string }).code === 'P2002'
+}
 
 export interface RegistrarMovimientoParams extends DatosMovimientoStockInput {
   idEnfermero?: string
@@ -93,6 +111,10 @@ export class VacunacionService {
     return vacunas.map((v) => ({
       idVacuna: v.idVacuna,
       nombre: v.nombre,
+      categoria: v.categoria,
+      laboratorio: v.laboratorio,
+      presentacion: v.presentacion,
+      umbralAlerta: v.umbralAlerta,
       stockDisponible: v.stock,
       turnosComprometidos: v.turnos.length,
       lotes: v.lotes.map((l) => ({
@@ -104,6 +126,125 @@ export class VacunacionService {
       createdAt: v.createdAt,
       updatedAt: v.updatedAt,
     }))
+  }
+
+  /**
+   * US-31: registra una vacuna nueva con su stock inicial. Si se indica lote, lo crea con esas dosis.
+   * El stock inicial queda auditado como un movimiento de INGRESO.
+   */
+  static async registrarVacuna(input: unknown, idEnfermero?: string) {
+    const validacion = validarAltaVacuna(input)
+    if (!validacion.ok || !validacion.datos) {
+      throw errorConEstado(validacion.error || 'Datos de la vacuna inválidos.', 400, 'INVALID_VACCINE')
+    }
+    const datos = validacion.datos
+
+    const existente = await prisma.vacuna.findFirst({
+      where: { nombre: { equals: datos.nombre, mode: 'insensitive' } },
+      select: { idVacuna: true },
+    })
+    if (existente) {
+      throw errorConEstado(`Ya existe una vacuna llamada "${datos.nombre}".`, 409, 'DUPLICATE_VACCINE')
+    }
+
+    try {
+      return await prisma.$transaction(async (tx) => {
+        const vacuna = await tx.vacuna.create({
+          data: {
+            nombre: datos.nombre,
+            categoria: datos.categoria,
+            laboratorio: datos.laboratorio,
+            presentacion: datos.presentacion,
+            umbralAlerta: datos.umbralAlerta,
+            stock: datos.stockInicial,
+          },
+        })
+
+        const lote = datos.numeroLote
+          ? await tx.loteVacuna.create({
+              data: {
+                idVacuna: vacuna.idVacuna,
+                numeroLote: datos.numeroLote,
+                stock: datos.stockInicial,
+                vencimiento: datos.vencimiento ? new Date(`${datos.vencimiento}T00:00:00.000Z`) : null,
+              },
+            })
+          : null
+
+        if (datos.stockInicial > 0) {
+          await tx.movimientoStockVacuna.create({
+            data: {
+              idVacuna: vacuna.idVacuna,
+              idLote: lote?.idLote,
+              idEnfermero,
+              tipoMovimiento: 'INGRESO',
+              cantidad: datos.stockInicial,
+              stockAnterior: 0,
+              stockNuevo: datos.stockInicial,
+              motivo: 'Stock inicial del alta de vacuna',
+            },
+          })
+        }
+
+        return vacuna
+      })
+    } catch (error) {
+      // Dos altas simultáneas con el mismo nombre: la base rechaza la segunda.
+      if (esErrorNombreDuplicado(error)) {
+        throw errorConEstado(`Ya existe una vacuna llamada "${datos.nombre}".`, 409, 'DUPLICATE_VACCINE')
+      }
+      throw error
+    }
+  }
+
+  /**
+   * US-32: fija el stock de una vacuna en la cantidad indicada (0 o más) y deja la diferencia
+   * auditada como movimiento de AJUSTE. Falla si otro usuario cambió el stock mientras tanto.
+   */
+  static async actualizarStock(idVacuna: string, input: unknown, idEnfermero?: string) {
+    const validacion = validarActualizacionStock(input)
+    if (!validacion.ok || !validacion.datos) {
+      throw errorConEstado(validacion.error || 'Cantidad inválida.', 400, 'INVALID_STOCK')
+    }
+    const { stockNuevo, motivo } = validacion.datos
+
+    return prisma.$transaction(async (tx) => {
+      const vacuna = await tx.vacuna.findUnique({ where: { idVacuna } })
+      if (!vacuna) {
+        throw errorConEstado('La vacuna indicada no existe.', 404, 'VACCINE_NOT_FOUND')
+      }
+
+      const diferencia = stockNuevo - vacuna.stock
+      if (diferencia === 0) {
+        return { vacuna, sinCambios: true }
+      }
+
+      const resultado = await tx.vacuna.updateMany({
+        where: { idVacuna, stock: vacuna.stock },
+        data: { stock: stockNuevo },
+      })
+      if (resultado.count !== 1) {
+        throw errorConEstado(
+          'El stock cambió mientras lo editabas. Volvé a cargar el inventario e intentá de nuevo.',
+          409,
+          'CONCURRENT_MODIFICATION'
+        )
+      }
+
+      await tx.movimientoStockVacuna.create({
+        data: {
+          idVacuna,
+          idEnfermero,
+          tipoMovimiento: 'AJUSTE',
+          cantidad: diferencia,
+          stockAnterior: vacuna.stock,
+          stockNuevo,
+          motivo: motivo || 'Actualización de stock desde el inventario',
+        },
+      })
+
+      return { vacuna: { ...vacuna, stock: stockNuevo }, sinCambios: false }
+    })
   }
 
   /**

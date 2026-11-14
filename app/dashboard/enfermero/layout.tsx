@@ -10,7 +10,10 @@ export default async function EnfermeroLayout({ children }: { children: React.Re
   return (
     <LayoutStaff
       inicio={BASE}
-      secciones={[{ href: BASE, label: 'Vacunatorio', exacto: true }]}
+      secciones={[
+        { href: BASE, label: 'Turnos en sala', exacto: true },
+        { href: `${BASE}/inventario`, label: 'Inventario' },
+      ]}
       nombre={nombre}
       rol="Enfermería"
       etiqueta="Secciones de enfermería"

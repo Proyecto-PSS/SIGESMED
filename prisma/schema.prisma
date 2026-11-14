@@ -188,11 +188,23 @@ model Enfermero {
   @@map("enfermeros")
 }
 
+enum CategoriaVacuna {
+  CALENDARIO_NACIONAL
+  ESTACIONAL
+  INFANTIL
+  REFUERZO
+  OTRA
+}
+
 model Vacuna {
-  idVacuna  String   @id @default(cuid()) @map("id_vacuna")
-  nombre    String   @unique
-  stock     Int      @default(0)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  idVacuna     String          @id @default(cuid()) @map("id_vacuna")
+  nombre       String          @unique
+  stock        Int             @default(0)
+  categoria    CategoriaVacuna @default(CALENDARIO_NACIONAL)
+  laboratorio  String?
+  presentacion String?
+  umbralAlerta Int             @default(10) @map("umbral_alerta") @db.SmallInt
+  createdAt    DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   turnos      TurnoVacunacion[]

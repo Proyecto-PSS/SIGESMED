@@ -1,0 +1,535 @@
+/* Pantalla "Turnos en sala" de enfermería. Usa los tokens del portal; los estados llevan
+   siempre texto (y a veces ícono), no solo color. */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ---------- Encabezado ---------- */
+.encabezado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.eyebrow {
+  display: block;
+  margin-bottom: 4px;
+  color: #6b7b80;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.titulo {
+  margin: 0;
+  color: var(--color-tinta);
+  font-family: var(--font-display), Georgia, serif;
+  font-size: clamp(26px, 3vw, 32px);
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.fecha {
+  margin: 6px 0 0;
+  color: var(--color-tinta-suave);
+  font-size: 14px;
+}
+
+.encabezadoAcciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ---------- Indicador de conexión ---------- */
+.conexion {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border: 1px solid;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.conexionPunto {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.conexionOnline {
+  border-color: #a7f3d0;
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.conexionReconectando {
+  border-color: #f3dca5;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.conexionOffline {
+  border-color: #f5c2bd;
+  background: #fff1f0;
+  color: #b42318;
+}
+
+.conexionReintentar {
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.avisoOffline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* ---------- Indicadores del día ---------- */
+.indicadores {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.indicador {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 16px 18px;
+  border: 1px solid #e4e4dd;
+  border-left: 4px solid var(--acento);
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.acento_primario {
+  --acento: var(--color-primario);
+}
+
+.acento_verde {
+  --acento: #1a8f5a;
+}
+
+.acento_neutro {
+  --acento: #b9c2c4;
+}
+
+.acento_rojo {
+  --acento: #b42318;
+  background: #fff7f6;
+}
+
+.indicadorEtiqueta {
+  color: var(--color-tinta-suave);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.indicadorValor {
+  color: var(--color-tinta);
+  font-size: 28px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.indicadorDetalle {
+  color: #6b7b80;
+  font-size: 12px;
+}
+
+.acento_rojo .indicadorEtiqueta,
+.acento_rojo .indicadorDetalle {
+  color: #b42318;
+}
+
+/* ---------- Columnas y tarjetas ---------- */
+.columnas {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+  align-items: start;
+  gap: 20px;
+}
+
+.columnaPrincipal {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.tarjeta {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 22px;
+  border: 1px solid #e4e4dd;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(27, 47, 54, 0.05);
+}
+
+.tarjetaEncabezado {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tarjetaTitulo {
+  margin: 0;
+  color: var(--color-tinta);
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.tarjetaDetalle {
+  margin: 3px 0 0;
+  color: #6b7b80;
+  font-size: 13px;
+}
+
+/* ---------- Filtros de turnos ---------- */
+.filtros {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.buscador {
+  max-width: 420px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid #d9dcd6;
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--color-tinta-suave);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.chip:hover {
+  border-color: var(--color-primario);
+  color: var(--color-tinta);
+}
+
+.chipActivo,
+.chipActivo:hover {
+  border-color: var(--color-primario);
+  background: var(--color-primario);
+  color: #ffffff;
+}
+
+.chipContador {
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(27, 47, 54, 0.08);
+  font-size: 11px;
+  text-align: center;
+}
+
+.chipActivo .chipContador {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* ---------- Tabla de turnos ---------- */
+.tablaContenedor {
+  overflow-x: auto;
+  border: 1px solid #e4e4dd;
+  border-radius: 12px;
+}
+
+.tabla {
+  width: 100%;
+  min-width: 620px;
+  border-collapse: collapse;
+  font-size: 14px;
+  text-align: left;
+}
+
+.tabla th {
+  padding: 11px 14px;
+  border-bottom: 1px solid #e4e4dd;
+  background: #fafaf7;
+  color: var(--color-tinta-suave);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.tabla td {
+  padding: 12px 14px;
+  border-bottom: 1px solid #f1f1ec;
+  vertical-align: middle;
+}
+
+.tabla tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.tabla tbody tr:hover td {
+  background: #fafaf7;
+}
+
+.alDerecha {
+  text-align: right;
+}
+
+.hora {
+  display: block;
+  color: var(--color-tinta);
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.principal {
+  display: block;
+  color: var(--color-tinta);
+  font-weight: 600;
+}
+
+.secundario {
+  display: block;
+  margin-top: 2px;
+  color: #6b7b80;
+  font-size: 12px;
+}
+
+.vacio {
+  padding: 28px 14px;
+  color: #6b7b80;
+  font-size: 13px;
+  text-align: center;
+}
+
+.estado {
+  display: inline-block;
+  padding: 3px 10px;
+  border: 1px solid;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.estadoEspera {
+  border-color: #f3dca5;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.estadoAplicada {
+  border-color: #a7f3d0;
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.estadoLibre {
+  border-color: #d9dcd6;
+  background: #fafaf7;
+  color: var(--color-tinta-suave);
+}
+
+.estadoCancelado {
+  border-color: #f5c2bd;
+  background: #fff1f0;
+  color: #b42318;
+}
+
+/* ---------- Atención sin turno ---------- */
+.formSinTurno {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto;
+  align-items: end;
+  gap: 12px;
+}
+
+.textoAlerta {
+  margin: 4px 0 0;
+  font-size: 13px;
+}
+
+/* ---------- Stock disponible ---------- */
+.listaStock {
+  display: flex;
+  max-height: 440px;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.itemStock {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #f1f1ec;
+}
+
+.itemStock:last-child {
+  border-bottom: none;
+}
+
+.stock {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border: 1px solid;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.stockCritico {
+  border-color: #f5c2bd;
+  background: #fff1f0;
+  color: #b42318;
+}
+
+.stockBajo {
+  border-color: #f3dca5;
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.stockNormal {
+  border-color: #a7f3d0;
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.accionesStock {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid #f1f1ec;
+  text-align: center;
+}
+
+/* ---------- Modal de ingreso / ajuste ---------- */
+.modalFondo {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(27, 47, 54, 0.6);
+  backdrop-filter: blur(2px);
+}
+
+.modal {
+  display: flex;
+  width: 100%;
+  max-width: 520px;
+  max-height: calc(100vh - 32px);
+  flex-direction: column;
+  gap: 14px;
+  padding: 24px;
+  overflow-y: auto;
+  border: 1px solid #e4e4dd;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 20px 40px -12px rgba(27, 47, 54, 0.35);
+}
+
+.modalEncabezado {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cerrar {
+  border: none;
+  background: none;
+  color: #6b7b80;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.cerrar:hover {
+  color: var(--color-tinta);
+}
+
+.modalGrilla {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.modalAcciones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 6px;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1100px) {
+  .columnas {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .indicadores {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .formSinTurno,
+  .modalGrilla {
+    grid-template-columns: 1fr;
+  }
+
+  .tarjeta {
+    padding: 18px 16px;
+  }
+}

@@ -226,7 +226,7 @@ export default function PanelMetricas() {
 
 function Indicadores({ reporte }: { reporte: ReporteAdministrativoDTO }) {
   const { asistencia, pagos, vacunas } = reporte
-  const criticas = vacunas.filter((v) => v.critico).length
+  const conStockBajo = vacunas.filter((v) => v.stockBajo).length
 
   return (
     <div className={styles.indicadores}>
@@ -257,11 +257,11 @@ function Indicadores({ reporte }: { reporte: ReporteAdministrativoDTO }) {
       />
       <Indicador
         icono="vacuna"
-        color={criticas > 0 ? COLOR.rojo : COLOR.naranja}
-        etiqueta="Vacunas en stock crítico"
-        valor={formatoNumero.format(criticas)}
-        detalle={criticas > 0 ? `⚠ de ${vacunas.length} vacunas · revisar stock` : `Todo en orden (${vacunas.length} vacunas)`}
-        alerta={criticas > 0}
+        color={conStockBajo > 0 ? COLOR.rojo : COLOR.naranja}
+        etiqueta="Vacunas con stock bajo"
+        valor={formatoNumero.format(conStockBajo)}
+        detalle={conStockBajo > 0 ? `⚠ de ${vacunas.length} vacunas · revisar stock` : `Todo en orden (${vacunas.length} vacunas)`}
+        alerta={conStockBajo > 0}
       />
     </div>
   )
@@ -513,15 +513,15 @@ function StockVacunas({ vacunas }: { vacunas: StockVacuna[] }) {
           <div className={styles.barraCabecera}>
             <span className={styles.barraEtiqueta}>
               {v.nombre}
-              {v.critico && <span className={styles.etiquetaCritico}>⚠ Crítico</span>}
+              {v.stockBajo && <span className={styles.etiquetaCritico}>⚠ Stock bajo</span>}
             </span>
             <span className={styles.barraValor}>{formatoNumero.format(v.stock)} dosis</span>
           </div>
           <div
             className={styles.marca}
-            style={estiloBarra(v.critico ? COLOR.rojo : COLOR.naranja, v.stock, maximo)}
+            style={estiloBarra(v.stockBajo ? COLOR.rojo : COLOR.naranja, v.stock, maximo)}
             tabIndex={0}
-            aria-label={`${v.nombre}: ${v.stock} dosis${v.critico ? ', stock crítico' : ''}`}
+            aria-label={`${v.nombre}: ${v.stock} dosis${v.stockBajo ? `, debajo del umbral de ${v.umbralAlerta}` : ''}`}
           >
             <span className={styles.pista}>
               <span className={styles.barra} />
