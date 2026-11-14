@@ -13,6 +13,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       secciones={[
         { href: BASE, label: 'Panel de administrador', exacto: true },
         { href: `${BASE}/gestion`, label: 'Gestión' },
+        { href: `${BASE}/reportes`, label: 'Reportes' },
       ]}
       nombre={nombre}
       rol="Administración"

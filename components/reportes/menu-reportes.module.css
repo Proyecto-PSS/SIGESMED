@@ -1,0 +1,13 @@
+.contenedor { max-width: 1120px; margin: 0 auto; padding: 2.5rem clamp(1.5rem, 5vw, 4rem); color: #173039; }
+.ruta { margin: 0 0 .4rem; color: #287c89; font-size: .78rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.contenedor h1 { margin: 0; font: 700 1.9rem/1.2 var(--font-display), Georgia, serif; }
+.descripcion { margin: .55rem 0 1.5rem; color: #63767b; }
+.opcion { display: flex; align-items: center; gap: 1rem; max-width: 620px; padding: 1.15rem; border: 1px solid #e4e4dd; border-radius: 12px; background: #fff; color: inherit; text-decoration: none; transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease; }
+.opcion:hover { transform: translateY(-1px); border-color: #8db9be; box-shadow: 0 5px 16px rgba(27, 47, 54, .08); }
+.opcion:focus-visible { outline: 2px solid #237b88; outline-offset: 3px; }
+.icono { display: grid; width: 2.75rem; height: 2.75rem; flex: 0 0 auto; place-items: center; border-radius: 9px; background: #eaf5f4; color: #237b88; font-size: 1.45rem; }
+.opcion strong, .detalle { display: block; }
+.opcion strong { font-size: 1rem; }
+.detalle { margin-top: .25rem; color: #63767b; font-size: .9rem; }
+.flecha { margin-left: auto; color: #237b88; font-size: 1.3rem; }
+@media (max-width: 600px) { .contenedor { padding: 1.5rem 1.25rem; } .opcion { gap: .75rem; padding: 1rem; } }

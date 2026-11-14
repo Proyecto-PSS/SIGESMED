@@ -13,6 +13,7 @@ export default async function EnfermeroLayout({ children }: { children: React.Re
       secciones={[
         { href: BASE, label: 'Turnos en sala', exacto: true },
         { href: `${BASE}/inventario`, label: 'Inventario' },
+        { href: `${BASE}/reportes`, label: 'Reportes' },
       ]}
       nombre={nombre}
       rol="Enfermería"

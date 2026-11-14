@@ -25,6 +25,14 @@ export interface ReporteAdministrativoDTO {
 }
 
 export class ReportesService {
+  /** Stock actual para el reporte de vacunas, sin efectos secundarios sobre el catálogo. */
+  static async obtenerStockVacunas() {
+    const vacunas = await prisma.vacuna.findMany({
+      select: { idVacuna: true, nombre: true, stock: true, umbralAlerta: true },
+    })
+    return clasificarStockVacunas(vacunas)
+  }
+
   /**
    * Arma el reporte del período. Los turnos se filtran por su fecha de atención y los pagos
    * por la fecha en que se registraron. El stock de vacunas es siempre el actual.

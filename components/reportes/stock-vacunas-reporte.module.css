@@ -1,0 +1,30 @@
+.reporte { display: grid; gap: 1.25rem; max-width: 1200px; margin: 0 auto; padding: 2rem clamp(1.5rem, 5vw, 4rem); color: #173039; }
+.encabezado { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; padding: 1.5rem; border-radius: 14px; background: #fff; border: 1px solid #e4e4dd; }
+.encabezado h1 { margin: 0.2rem 0 0; color: #173039; font: 700 1.8rem/1.15 var(--font-display), Georgia, serif; }
+.encabezado p { margin: 0.45rem 0 0; color: #63767b; }
+.encabezado .ruta { margin: 0; color: #287c89; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.volver { display: inline-block; margin-bottom: .8rem; color: #237b88; font-size: .9rem; font-weight: 700; text-decoration: none; }
+.volver:hover { text-decoration: underline; }
+.volver:focus-visible { outline: 2px solid #237b88; outline-offset: 3px; border-radius: 2px; }
+.encabezado button { min-height: 2.6rem; padding: 0.55rem 1rem; border: 0; border-radius: 8px; background: #237b88; color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+.encabezado button:disabled { cursor: wait; opacity: 0.65; }
+.tablaContenedor { overflow-x: auto; border: 1px solid #e4e4dd; border-radius: 12px; background: #fff; }
+.tabla { width: 100%; border-collapse: collapse; text-align: left; }
+.tabla th, .tabla td { padding: 0.9rem 1rem; border-bottom: 1px solid #ecece7; }
+.tabla thead { background: #f7f8f5; color: #53686d; font-size: 0.8rem; }
+.tabla tbody tr:last-child th, .tabla tbody tr:last-child td { border-bottom: 0; }
+.tabla tbody th { font-weight: 650; }
+.tabla td { color: #52676b; font-variant-numeric: tabular-nums; }
+.tabla .stockBajo { background: #fff5f3; }
+.alerta, .normal { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.3rem 0.6rem; border-radius: 999px; font-size: 0.8rem; font-weight: 700; white-space: nowrap; }
+.alerta { background: #fee8e5; color: #a12b23; }
+.normal { background: #eaf5ee; color: #24603a; }
+.estado, .error { margin: 0; padding: 1rem; border-radius: 10px; background: #fff; color: #63767b; }
+.error { background: #fff0ef; color: #8b2721; }
+.pie { margin: 0; color: #63767b; font-size: 0.85rem; }
+
+@media (max-width: 640px) {
+  .reporte { padding: 1.25rem; }
+  .encabezado { align-items: flex-start; flex-direction: column; }
+  .tabla { min-width: 580px; }
+}
