@@ -2,6 +2,10 @@ import { clerkClient, clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/
 import { NextResponse } from 'next/server'
 
 const dashboardRoutes = createRouteMatcher(['/dashboard/(.*)'])
+const reportesStockVacunas = new Set([
+  '/dashboard/admin/reportes/stock-vacunas',
+  '/dashboard/enfermero/reportes/stock-vacunas',
+])
 const roleDashboard: Record<string, string> = {
   paciente: '/dashboard/paciente',
   medico: '/dashboard/medico',
@@ -49,7 +53,7 @@ export default clerkMiddleware(async (auth, request) => {
   }
   if (dashboardRoutes(request)) {
     const isOwnDashboard = dashboard && (path === dashboard || path.startsWith(`${dashboard}/`))
-    if (!isOwnDashboard) {
+    if (!isOwnDashboard && !reportesStockVacunas.has(path)) {
       return NextResponse.redirect(new URL(dashboard || '/acceso-denegado', request.url))
     }
   }
