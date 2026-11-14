@@ -21,6 +21,13 @@ function esErrorNombreDuplicado(error: unknown): boolean {
   return typeof error === 'object' && error !== null && (error as { code?: string }).code === 'P2002'
 }
 
+function turnoVacunacionSigueVigente(fecha: Date, hora: string): boolean {
+  const [anio, mes, dia] = fecha.toISOString().slice(0, 10).split('-').map(Number)
+  const [horas, minutos] = hora.split(':').map(Number)
+  // La fecha y hora de agenda se interpretan en Argentina (UTC-3).
+  return Date.UTC(anio, mes - 1, dia, horas + 3, minutos) > Date.now()
+}
+
 export interface RegistrarMovimientoParams extends DatosMovimientoStockInput {
   idEnfermero?: string
 }
@@ -481,6 +488,108 @@ export class VacunacionService {
         enfermero: true,
       },
       orderBy: [{ fecha: 'asc' }, { hora: 'asc' }],
+    })
+  }
+
+  /** Turnos de vacunación confirmados del paciente autenticado. */
+  static async obtenerTurnosVacunacionPaciente(idPaciente: string) {
+    return prisma.turnoVacunacion.findMany({
+      where: { idPaciente, estado: 'CONFIRMADO' },
+      include: { vacuna: true, lote: true, enfermero: true },
+      orderBy: [{ fecha: 'asc' }, { hora: 'asc' }],
+    })
+  }
+
+  /** Historial de cancelaciones de vacunación realizadas por el paciente. */
+  static async obtenerHistorialCancelacionesVacunacionPaciente(idPaciente: string) {
+    return prisma.cancelacionTurnoVacunacion.findMany({
+      where: { idPaciente },
+      orderBy: { canceladoAt: 'desc' },
+    })
+  }
+
+  /**
+   * Cancela un turno del paciente de forma atómica: libera el horario, devuelve
+   * una dosis (y su lote) y registra el movimiento una sola vez.
+   */
+  static async cancelarTurnoVacunacionPaciente(
+    idTurnoVacunacion: string,
+    idPaciente: string,
+    motivo: string
+  ) {
+    return prisma.$transaction(async (tx) => {
+      const turno = await tx.turnoVacunacion.findFirst({
+        where: { idTurnoVacunacion, idPaciente, estado: 'CONFIRMADO' },
+        include: { vacuna: { select: { nombre: true } } },
+      })
+
+      if (!turno) {
+        const err = errorConEstado('No se encontró un turno confirmado asociado a este paciente.', 404)
+        throw err
+      }
+
+      const horarioLiberado = turnoVacunacionSigueVigente(turno.fecha, turno.hora)
+
+      // Reclama la reserva antes de devolver el stock. Un horario vencido se
+      // conserva como CANCELADO; solo los horarios futuros vuelven a DISPONIBLE.
+      const liberado = await tx.turnoVacunacion.updateMany({
+        where: { idTurnoVacunacion, idPaciente, estado: 'CONFIRMADO' },
+        data: {
+          estado: horarioLiberado ? 'DISPONIBLE' : 'CANCELADO',
+          idPaciente: horarioLiberado ? null : idPaciente,
+          idempotencyKey: null,
+        },
+      })
+
+      if (liberado.count !== 1) {
+        throw errorConEstado('El turno cambió de estado y no se pudo cancelar.', 409)
+      }
+
+      const cancelacion = await tx.cancelacionTurnoVacunacion.create({
+        data: {
+          idTurnoVacunacion,
+          idPaciente,
+          idEnfermero: turno.idEnfermero,
+          idVacuna: turno.idVacuna,
+          idLote: turno.idLote,
+          nombreVacuna: turno.vacuna.nombre,
+          fecha: turno.fecha,
+          hora: turno.hora,
+          motivo,
+        },
+      })
+
+      const vacuna = await tx.vacuna.update({
+        where: { idVacuna: turno.idVacuna },
+        data: { stock: { increment: 1 } },
+      })
+
+      if (turno.idLote) {
+        await tx.loteVacuna.update({
+          where: { idLote: turno.idLote },
+          data: { stock: { increment: 1 } },
+        })
+      }
+
+      await tx.movimientoStockVacuna.create({
+        data: {
+          idVacuna: turno.idVacuna,
+          idLote: turno.idLote,
+          idEnfermero: turno.idEnfermero,
+          tipoMovimiento: 'LIBERACION',
+          cantidad: 1,
+          stockAnterior: vacuna.stock - 1,
+          stockNuevo: vacuna.stock,
+          motivo: `Liberación por cancelación del paciente en turno #${idTurnoVacunacion}: ${motivo}`,
+        },
+      })
+
+      const turnoActualizado = await tx.turnoVacunacion.findUniqueOrThrow({
+        where: { idTurnoVacunacion },
+        include: { vacuna: true, lote: true, paciente: true, enfermero: true },
+      })
+
+      return { turno: turnoActualizado, cancelacion, horarioLiberado }
     })
   }
 
