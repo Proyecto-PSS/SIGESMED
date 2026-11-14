@@ -1,5 +1,5 @@
-/* Triple selector en el link: le gana a la regla global `a { color: #000 }`. */
-a.tarjeta.tarjeta {
+/* Triple clase: le gana a la regla global `a { color: #000 }` (la tarjeta puede ser <a> o <div>). */
+.tarjeta.tarjeta.tarjeta {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -28,12 +28,12 @@ a.tarjeta.tarjeta {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-a.tarjeta.tarjeta:hover {
+.tarjeta.tarjeta.tarjeta:hover {
   transform: translateY(-3px);
   box-shadow: 0 12px 28px rgba(27, 47, 54, 0.22);
 }
 
-a.tarjeta.tarjeta:focus-visible {
+.tarjeta.tarjeta.tarjeta:focus-visible {
   outline: 3px solid var(--color-primario);
   outline-offset: 3px;
 }
@@ -79,12 +79,29 @@ a.tarjeta.tarjeta:focus-visible {
   transition: background 0.2s ease;
 }
 
-a.tarjeta.tarjeta:hover .boton {
+.tarjeta.tarjeta.tarjeta:hover .boton {
   background: #eef5f6;
 }
 
 @media (max-width: 720px) {
-  a.tarjeta.tarjeta {
+  .tarjeta.tarjeta.tarjeta {
     min-height: 22rem;
   }
+}
+
+/* Acceso todavía no disponible: misma tarjeta, apagada y sin efecto al pasar el mouse. */
+.tarjeta.tarjeta.tarjeta.inactiva {
+  cursor: default;
+  filter: grayscale(0.6);
+}
+
+.tarjeta.tarjeta.tarjeta.inactiva:hover {
+  transform: none;
+  box-shadow: 0 1px 2px rgba(27, 47, 54, 0.08);
+}
+
+.tarjeta.tarjeta.tarjeta.inactiva .boton,
+.tarjeta.tarjeta.tarjeta.inactiva:hover .boton {
+  background: rgba(255, 255, 255, 0.75);
+  color: var(--color-tinta-suave);
 }

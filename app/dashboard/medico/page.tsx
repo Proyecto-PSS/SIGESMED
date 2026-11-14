@@ -1,70 +1,47 @@
 import Link from 'next/link'
 import { getCurrentMedicalUser } from '@/lib/auth'
+import AccesoCard from '@/components/paciente/inicio/AccesoCard'
+import { ACCESOS_MEDICO } from '@/components/medico/inicio/accesos'
+import ui from '@/components/paciente/ui/ui.module.css'
+import styles from '@/components/medico/inicio/InicioMedico.module.css'
 
-export default async function MedicoDashboardPage() {
+interface Props {
+  // Al volver de publicar la agenda (US-04) llegan el total de turnos y jornadas abiertos.
+  searchParams: Promise<{ agenda?: string; turnos?: string; jornadas?: string }>
+}
+
+export default async function MedicoDashboardPage({ searchParams }: Props) {
   // Valida que el usuario sea médico (si no, lanza error).
-  await getCurrentMedicalUser()
+  const [medico, { agenda, turnos, jornadas }] = await Promise.all([getCurrentMedicalUser(), searchParams])
+  const nombre = medico.nombre?.trim().split(' ')[0]
+  const agendaPublicada = agenda === 'publicada'
+
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-900 p-4 sm:p-6 lg:p-8">
-      <div className="max-w-5xl mx-auto space-y-6">
-        <header className="flex items-center justify-between gap-4 pb-4 border-b border-slate-200">
-          <div>
-            <span className="text-[10px] font-mono uppercase tracking-widest text-slate-500 font-bold block">
-              Panel Profesional
-            </span>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-              Dashboard Médico
-            </h1>
-          </div>
-          {/* Nombre, especialidad y avatar: en la barra superior (app/dashboard/medico/layout.tsx). */}
-        </header>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Link
-            href="/dashboard/medico/agenda"
-            className="p-5 bg-white border border-slate-200 hover:border-black rounded-xl shadow-sm transition-all flex flex-col justify-between group"
-          >
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <span className="w-2.5 h-2.5 rounded-full bg-black" />
-                <span className="text-[11px] font-mono text-slate-500 font-bold uppercase">
-                  Gestión de Horarios
-                </span>
-              </div>
-              <h2 className="text-base font-bold text-slate-900 mb-1">
-                Agenda Médica y Disponibilidad
-              </h2>
-              <p className="text-xs text-slate-600">
-                Definición mensual de días de atención, franjas horarias y publicación de turnos en calendario interactivo.
-              </p>
-            </div>
-            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-mono font-bold text-slate-900">
-              <span>Abrir módulo de agenda</span>
-              <span className="group-hover:translate-x-1 transition-transform">&rarr;</span>
-            </div>
-          </Link>
-
-          <div className="p-5 bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col justify-between opacity-80">
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <span className="w-2.5 h-2.5 rounded-full bg-slate-400" />
-                <span className="text-[11px] font-mono text-slate-500 font-bold uppercase">
-                  Consultorio
-                </span>
-              </div>
-              <h2 className="text-base font-bold text-slate-900 mb-1">
-                Fichas Clínicas de Pacientes
-              </h2>
-              <p className="text-xs text-slate-600">
-                Búsqueda de pacientes citados, carga ágil de diagnósticos, prescripciones y antecedentes clínicos.
-              </p>
-            </div>
-            <div className="mt-4 pt-3 border-t border-slate-100 text-xs font-mono text-slate-500">
-              <span>Módulo en preparación</span>
-            </div>
-          </div>
-        </div>
+    <main className={styles.pagina}>
+      <div>
+        <h1 className={styles.saludo}>Panel profesional</h1>
+        <p className={styles.subtitulo}>{nombre ? `Hola, ${nombre}. ¿Qué necesitás hoy?` : 'Hola. ¿Qué necesitás hoy?'}</p>
       </div>
-    </div>
+
+      {agendaPublicada && (
+        <div className={`${ui.alerta} ${ui.alertaExito} ${styles.aviso}`} role="status">
+          <span>
+            ✓ <strong>¡Agenda publicada con éxito!</strong>
+            {turnos && jornadas && ` Se abrieron ${turnos} turnos en ${jornadas} jornadas para que los pacientes reserven online.`}
+          </span>
+          <Link href="/dashboard/medico/agenda" className={ui.linkSuave}>
+            Ver mi agenda →
+          </Link>
+        </div>
+      )}
+
+      <ul className={styles.grilla}>
+        {ACCESOS_MEDICO.map((acceso) => (
+          <li key={acceso.titulo}>
+            <AccesoCard acceso={acceso} />
+          </li>
+        ))}
+      </ul>
+    </main>
   )
 }
