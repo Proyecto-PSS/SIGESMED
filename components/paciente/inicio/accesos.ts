@@ -8,6 +8,8 @@ export interface Acceso {
   descripcion: string
   boton: string
   imagen: string
+  /** Sección todavía no disponible: la tarjeta se muestra sin link. */
+  proximamente?: boolean
 }
 
 export const ACCESOS: Acceso[] = [

@@ -2,6 +2,26 @@
 
 import React, { useState, useMemo } from 'react'
 import { Turno } from '@/lib/types/agenda'
+import styles from './agenda.module.css'
+
+const DIAS_CABECERA = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+
+const ESTADOS_TURNO: Record<Turno['estado'], { texto: string; clase: string }> = {
+  DISPONIBLE: { texto: 'Libre', clase: styles.turnoLibre },
+  CONFIRMADO: { texto: 'Reservado', clase: styles.turnoReservado },
+  ATENDIDO: { texto: 'Atendido', clase: styles.turnoAtendido },
+  AUSENTE: { texto: 'Ausente', clase: styles.turnoAusente },
+  CANCELADO: { texto: 'Cancelado', clase: styles.turnoCancelado },
+}
+
+function horaDe(fechaHora: string): string {
+  return fechaHora.split('T')[1].slice(0, 5)
+}
+
+function fechaLarga(fecha: string): string {
+  const texto = new Date(`${fecha}T12:00:00`).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })
+  return texto.charAt(0).toUpperCase() + texto.slice(1)
+}
 
 interface CalendarViewProps {
   currentMonth: string // YYYY-MM
@@ -39,7 +59,7 @@ export default function CalendarView({
         .map((turno) => `${turno.fecha_hora}|${turno.duracion_minutos}`)
     )
 
-    // Una cancelaciÃ³n histÃ³rica y el nuevo cupo disponible comparten horario.
+    // Una cancelación histórica y el nuevo cupo disponible comparten horario.
     // En la agenda mostramos el cupo vigente una sola vez.
     return delMes.filter(
       (turno) =>
@@ -108,269 +128,176 @@ export default function CalendarView({
     return semanas
   }, [year, month])
 
+
   const turnosDiaActivo = diaSeleccionado ? turnosPorFecha[diaSeleccionado] || [] : []
 
   return (
-    <div className="space-y-4">
-      {/* Controles de vista y métricas */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-slate-200 p-3 sm:p-4 rounded-xl shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
-            <button
-              type="button"
-              onClick={() => setVista('mensual')}
-              className={`px-3 py-1.5 text-xs font-mono font-bold rounded transition-all ${
-                vista === 'mensual'
-                  ? 'bg-black text-white shadow-sm'
-                  : 'text-slate-600 hover:text-black'
-              }`}
-            >
-              VISTA MENSUAL
-            </button>
-            <button
-              type="button"
-              onClick={() => setVista('semanal')}
-              className={`px-3 py-1.5 text-xs font-mono font-bold rounded transition-all ${
-                vista === 'semanal'
-                  ? 'bg-black text-white shadow-sm'
-                  : 'text-slate-600 hover:text-black'
-              }`}
-            >
-              VISTA SEMANAL
-            </button>
-          </div>
-
-          <span className="text-xs text-slate-500 font-mono hidden md:inline">
-            Turnos en agenda: <strong className="text-slate-900">{turnosMesActual.length}</strong>
-          </span>
+    <section className={styles.tarjeta} aria-labelledby="titulo-calendario">
+      <div className={styles.calendarioControles}>
+        <div>
+          <h2 id="titulo-calendario" className={styles.tarjetaTitulo}>Calendario de turnos</h2>
+          <p className={styles.tarjetaDetalle}>{turnosMesActual.length} turnos en agenda este mes</p>
         </div>
 
-        {vista === 'semanal' && semanasDelMes.length > 0 && (
-          <div className="flex items-center gap-2 self-end sm:self-auto">
-            <button
-              type="button"
-              disabled={semanaOffset <= 0}
-              onClick={() => setSemanaOffset((prev) => Math.max(0, prev - 1))}
-              className="px-2.5 py-1 rounded bg-slate-100 text-slate-700 hover:bg-slate-200 disabled:opacity-30 text-xs font-mono font-bold border border-slate-200"
-            >
-              &larr; Anterior
-            </button>
-            <span className="text-xs font-mono text-slate-700 font-medium">
-              Semana {semanaOffset + 1} de {semanasDelMes.length}
-            </span>
-            <button
-              type="button"
-              disabled={semanaOffset >= semanasDelMes.length - 1}
-              onClick={() =>
-                setSemanaOffset((prev) => Math.min(semanasDelMes.length - 1, prev + 1))
-              }
-              className="px-2.5 py-1 rounded bg-slate-100 text-slate-700 hover:bg-slate-200 disabled:opacity-30 text-xs font-mono font-bold border border-slate-200"
-            >
-              Siguiente &rarr;
-            </button>
+        <div className={styles.calendarioControles}>
+          {vista === 'semanal' && semanasDelMes.length > 0 && (
+            <div className={styles.semana}>
+              <button
+                type="button"
+                disabled={semanaOffset <= 0}
+                onClick={() => setSemanaOffset((prev) => Math.max(0, prev - 1))}
+                className={styles.mesFlecha}
+                aria-label="Semana anterior"
+              >
+                ‹
+              </button>
+              <span className={styles.nota}>
+                Semana {semanaOffset + 1} de {semanasDelMes.length}
+              </span>
+              <button
+                type="button"
+                disabled={semanaOffset >= semanasDelMes.length - 1}
+                onClick={() => setSemanaOffset((prev) => Math.min(semanasDelMes.length - 1, prev + 1))}
+                className={styles.mesFlecha}
+                aria-label="Semana siguiente"
+              >
+                ›
+              </button>
+            </div>
+          )}
+
+          <div className={styles.pestanas} role="group" aria-label="Tipo de vista">
+            {(['mensual', 'semanal'] as const).map((opcion) => (
+              <button
+                key={opcion}
+                type="button"
+                aria-pressed={vista === opcion}
+                onClick={() => setVista(opcion)}
+                className={`${styles.pestana} ${vista === opcion ? styles.pestanaActiva : ''}`}
+              >
+                {opcion === 'mensual' ? 'Mes' : 'Semana'}
+              </button>
+            ))}
           </div>
-        )}
+        </div>
       </div>
 
       {isLoading ? (
-        <div className="flex items-center justify-center p-12 bg-white border border-slate-200 rounded-xl">
-          <div className="flex items-center gap-3 text-slate-500 font-mono text-xs">
-            <svg className="w-5 h-5 animate-spin text-slate-900" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              />
-            </svg>
-            <span>Cargando agenda médica...</span>
-          </div>
-        </div>
+        <p className={styles.vacio}>Cargando agenda…</p>
       ) : turnosMesActual.length === 0 ? (
-        <div className="text-center p-12 bg-white border border-dashed border-slate-300 rounded-xl">
-          <svg className="w-10 h-10 mx-auto text-slate-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
-          <h4 className="text-sm font-bold text-slate-800">No hay turnos publicados para este periodo</h4>
-          <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-            Configura los horarios en la pestaña de disponibilidad y confirma la publicación para habilitar los cupos.
-          </p>
+        <div className={styles.vacio}>
+          <strong>No hay turnos publicados para este mes.</strong>
+          <br />
+          Configurá tus horarios en la pestaña "Configurar horarios" y publicá la agenda para habilitar los cupos.
         </div>
       ) : vista === 'mensual' ? (
-        /* VISTA MENSUAL */
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
-          {/* Grilla Calendario */}
-          <div className="lg:col-span-2 bg-white border border-slate-200 rounded-xl p-3 sm:p-4 shadow-sm">
-            <div className="grid grid-cols-7 gap-1 text-center font-mono text-[11px] text-slate-500 font-bold mb-2 py-1 border-b border-slate-100">
-              <div>LUN</div>
-              <div>MAR</div>
-              <div>MIÉ</div>
-              <div>JUE</div>
-              <div>VIE</div>
-              <div>SÁB</div>
-              <div>DOM</div>
-            </div>
-
-            <div className="grid grid-cols-7 gap-1.5">
+        <div className={styles.calendario}>
+          <div>
+            <div className={styles.grillaDias}>
+              {DIAS_CABECERA.map((d) => (
+                <span key={d} className={styles.cabeceraDia}>{d}</span>
+              ))}
               {diasMes.map((celda, idx) => {
-                if (!celda.fechaStr) {
-                  return <div key={`empty-${idx}`} className="h-14 sm:h-16 rounded-lg bg-slate-50" />
-                }
+                if (!celda.fechaStr) return <span key={`vacia-${idx}`} className={styles.celdaVacia} />
 
                 const turnosDelDia = turnosPorFecha[celda.fechaStr] || []
                 const tieneTurnos = turnosDelDia.length > 0
                 const isSelected = diaSeleccionado === celda.fechaStr
+                const clase = isSelected ? styles.celdaSeleccionada : tieneTurnos ? styles.celdaConTurnos : ''
 
                 return (
                   <button
                     key={celda.fechaStr}
                     type="button"
                     onClick={() => setDiaSeleccionado(celda.fechaStr)}
-                    className={`h-14 sm:h-16 p-1 sm:p-1.5 rounded-lg border text-left flex flex-col justify-between transition-all ${
-                      isSelected
-                        ? 'bg-slate-900 text-white border-black shadow-md'
-                        : tieneTurnos
-                        ? 'bg-white border-slate-300 hover:border-black hover:bg-slate-50'
-                        : 'bg-slate-50/50 border-slate-200 text-slate-400 hover:bg-slate-100'
-                    }`}
+                    aria-pressed={isSelected}
+                    aria-label={`${fechaLarga(celda.fechaStr)}: ${turnosDelDia.length} turnos`}
+                    className={`${styles.celda} ${clase}`}
                   >
-                    <div className="flex items-center justify-between w-full">
-                      <span
-                        className={`text-xs font-mono font-bold ${
-                          isSelected ? 'text-white' : tieneTurnos ? 'text-slate-900' : 'text-slate-400'
-                        }`}
-                      >
-                        {celda.diaNum}
-                      </span>
-                      {tieneTurnos && (
-                        <span
-                          className={`w-2 h-2 rounded-full ${
-                            isSelected ? 'bg-emerald-400' : 'bg-black'
-                          }`}
-                        />
-                      )}
-                    </div>
-
-                    {tieneTurnos && (
-                      <span
-                        className={`text-[9px] sm:text-[10px] font-mono font-bold truncate px-1 rounded block ${
-                          isSelected
-                            ? 'bg-white text-black'
-                            : 'bg-slate-100 text-slate-800 border border-slate-200'
-                        }`}
-                      >
-                        {turnosDelDia.length} turnos
-                      </span>
-                    )}
+                    <span className={styles.celdaNumero}>{celda.diaNum}</span>
+                    {tieneTurnos && <span className={styles.celdaCupos}>{turnosDelDia.length} turnos</span>}
                   </button>
                 )
               })}
             </div>
           </div>
 
-          {/* Panel Lateral: Detalle del Día */}
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col">
-            <div className="pb-3 border-b border-slate-100 mb-3 flex items-center justify-between">
+          <aside className={styles.tarjeta} aria-live="polite">
+            <div className={styles.tarjetaEncabezado}>
               <div>
-                <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 block font-bold">
-                  Detalle del Día
-                </span>
-                <h4 className="text-sm font-bold text-slate-900 mt-0.5">
-                  {diaSeleccionado ? diaSeleccionado : 'Selecciona un día'}
-                </h4>
+                <span className={styles.eyebrow}>Detalle del día</span>
+                <h3 className={styles.tarjetaTitulo}>
+                  {diaSeleccionado ? fechaLarga(diaSeleccionado) : 'Elegí un día'}
+                </h3>
               </div>
-              {diaSeleccionado && (
-                <span className="text-xs font-mono bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded-full font-bold text-slate-800">
-                  {turnosDiaActivo.length} turnos
-                </span>
-              )}
+              {diaSeleccionado && <span className={styles.etiqueta}>{turnosDiaActivo.length} turnos</span>}
             </div>
 
-            <div className="flex-1 overflow-y-auto max-h-[380px] space-y-2 pr-1">
-              {!diaSeleccionado ? (
-                <div className="text-center py-10 text-xs text-slate-400 font-mono">
-                  Haz clic en un día del calendario para ver los horarios publicados.
-                </div>
-              ) : turnosDiaActivo.length === 0 ? (
-                <div className="text-center py-10 text-xs text-slate-400 font-mono">
-                  No hay turnos disponibles para esta fecha.
-                </div>
-              ) : (
-                turnosDiaActivo.map((t) => {
-                  const hora = t.fecha_hora.split('T')[1].slice(0, 5)
+            {!diaSeleccionado ? (
+              <p className={styles.nota}>Tocá un día del calendario para ver sus horarios.</p>
+            ) : turnosDiaActivo.length === 0 ? (
+              <p className={styles.nota}>No hay turnos para esta fecha.</p>
+            ) : (
+              <ul className={styles.listaTurnos}>
+                {turnosDiaActivo.map((t) => {
+                  const estado = ESTADOS_TURNO[t.estado]
+                  const puedeMarcarAusente =
+                    t.estado === 'CONFIRMADO' && onMarkAbsent && new Date(t.fecha_hora) < new Date()
                   return (
-                    <div
-                      key={t.id}
-                      className="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-900">{hora} hs</span>
-                        <span className="text-slate-500">({t.duracion_minutos} min)</span>
-                      </div>
-                      <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded text-[10px] font-bold">
-                        {t.estado}
+                    <li key={t.id} className={styles.turno}>
+                      <span>
+                        <span className={styles.turnoHora}>{horaDe(t.fecha_hora)} hs</span>
+                        <span className={styles.turnoDuracion}>{t.duracion_minutos} min</span>
                       </span>
-                      {t.estado === 'CONFIRMADO' && onMarkAbsent && new Date(t.fecha_hora) < new Date() && (
-                        <button type="button" onClick={() => onMarkAbsent(t.id)} className="border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-800 rounded">Marcar ausente</button>
-                      )}
-                    </div>
+                      <span className={styles.turnoAcciones}>
+                        <span className={`${styles.estadoTurno} ${estado.clase}`}>{estado.texto}</span>
+                        {puedeMarcarAusente && (
+                          <button type="button" onClick={() => onMarkAbsent?.(t.id)} className={styles.botonAusente}>
+                            Marcar ausente
+                          </button>
+                        )}
+                      </span>
+                    </li>
                   )
-                })
-              )}
-            </div>
-          </div>
+                })}
+              </ul>
+            )}
+          </aside>
         </div>
       ) : (
-        /* VISTA SEMANAL */
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm overflow-x-auto">
-          <div className="min-w-[650px] grid grid-cols-7 gap-2.5">
+        <div className={styles.semanalContenedor}>
+          <div className={styles.semanal}>
             {(semanasDelMes[semanaOffset] || []).map((fechaStr) => {
               const turnosDelDia = turnosPorFecha[fechaStr] || []
               const dateObj = new Date(`${fechaStr}T00:00:00`)
-              const nombreDia = dateObj.toLocaleDateString('es-AR', { weekday: 'short' })
-              const numDia = dateObj.getDate()
-
               return (
-                <div
-                  key={fechaStr}
-                  className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 flex flex-col min-h-[300px]"
-                >
-                  <div className="text-center pb-2 border-b border-slate-200 mb-2">
-                    <span className="text-[10px] uppercase font-mono text-slate-500 block font-bold">
-                      {nombreDia}
+                <div key={fechaStr} className={styles.columnaDia}>
+                  <div className={styles.columnaDiaCabecera}>
+                    <span className={styles.columnaDiaNombre}>
+                      {dateObj.toLocaleDateString('es-AR', { weekday: 'short' }).replace('.', '')}
                     </span>
-                    <span className="text-sm font-bold font-mono text-slate-900">{numDia}</span>
-                    <span className="text-[10px] font-mono text-slate-600 block mt-0.5">
-                      {turnosDelDia.length} cupos
-                    </span>
+                    <span className={styles.columnaDiaNumero}>{dateObj.getDate()}</span>
+                    <span className={styles.nota}>{turnosDelDia.length} cupos</span>
                   </div>
-
-                  <div className="flex-1 space-y-1.5 overflow-y-auto max-h-[250px]">
-                    {turnosDelDia.length === 0 ? (
-                      <span className="text-[10px] text-slate-400 block text-center mt-6 font-mono">
-                        Sin atención
+                  {turnosDelDia.length === 0 ? (
+                    <span className={styles.nota} style={{ textAlign: 'center', marginTop: 16 }}>Sin atención</span>
+                  ) : (
+                    turnosDelDia.map((t) => (
+                      <span key={t.id} className={styles.chipTurno} title={ESTADOS_TURNO[t.estado].texto}>
+                        {horaDe(t.fecha_hora)}
+                        <span
+                          className={`${styles.puntoEstado} ${t.estado === 'DISPONIBLE' ? styles.puntoLibre : styles.puntoReservado}`}
+                          aria-label={ESTADOS_TURNO[t.estado].texto}
+                        />
                       </span>
-                    ) : (
-                      turnosDelDia.map((t) => {
-                        const hora = t.fecha_hora.split('T')[1].slice(0, 5)
-                        return (
-                          <div
-                            key={t.id}
-                            className="p-1.5 rounded bg-white border border-slate-200 text-[11px] font-mono flex items-center justify-between"
-                          >
-                            <span className="text-slate-900 font-bold">{hora}</span>
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                          </div>
-                        )
-                      })
-                    )}
-                  </div>
+                    ))
+                  )}
                 </div>
               )
             })}
           </div>
         </div>
       )}
-    </div>
+    </section>
   )
 }
