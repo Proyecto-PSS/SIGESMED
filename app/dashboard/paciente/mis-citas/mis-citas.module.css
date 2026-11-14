@@ -1,0 +1,129 @@
+.lista {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Tarjeta: bloque de fecha | información | acciones */
+.cita {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: clamp(1rem, 2.5vw, 1.75rem);
+  padding: 1.25rem;
+  background: #ffffff;
+  border: 1px solid #e4e4dd;
+  border-radius: 10px;
+}
+
+.fecha {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 4.5rem;
+  padding: 0.6rem 0;
+  border-radius: 8px;
+  background: #eef5f5;
+  color: var(--color-primario);
+  text-align: center;
+}
+
+.fechaDia,
+.fechaMes {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.fechaNumero {
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 1.85rem;
+  font-weight: 700;
+  line-height: 1.05;
+  color: var(--color-tinta);
+}
+
+.info {
+  min-width: 0;
+}
+
+.etiquetas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.medico {
+  margin-top: 0.5rem;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--color-tinta);
+}
+
+.detalle {
+  margin-top: 0.2rem;
+  font-size: 0.9rem;
+  color: var(--color-tinta-suave);
+}
+
+.acciones {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+  min-width: 10rem;
+}
+
+.nota {
+  max-width: 11rem;
+  font-size: 0.78rem;
+  color: #8a979b;
+  text-align: center;
+}
+
+/* Panel de confirmación de cancelación */
+.confirmacion {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  border: 1px solid #efc9c5;
+  border-radius: 10px;
+  background: #fffafa;
+}
+
+.confirmacionAcciones {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+
+@media (max-width: 720px) {
+  .cita {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .acciones {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+
+  .nota {
+    max-width: none;
+    text-align: left;
+  }
+}

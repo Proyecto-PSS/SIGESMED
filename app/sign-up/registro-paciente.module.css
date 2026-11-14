@@ -3,10 +3,7 @@
   display: grid;
   place-items: center;
   padding: 48px 24px;
-  background:
-    radial-gradient(ellipse at 8% 10%, rgba(191, 219, 254, 0.55), transparent 34%),
-    radial-gradient(ellipse at 92% 88%, rgba(204, 251, 241, 0.55), transparent 32%),
-    #f4f7fb;
+  background: var(--bg-page);
 }
 
 .card {

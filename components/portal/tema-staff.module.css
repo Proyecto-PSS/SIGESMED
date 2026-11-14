@@ -1,0 +1,157 @@
+/*
+  Capa de tema para los dashboards de médico, enfermería y admin.
+
+  Esas pantallas usan clases utilitarias tipo Tailwind definidas en app/globals.css
+  (paleta gris azulado + negro + monoespaciada). En vez de reescribirlas, acá se
+  traducen a la paleta del portal (teal / tinta / hueso) y a sus tipografías,
+  SOLO dentro del contenedor `.staff`. El paciente y la landing no se ven afectados.
+
+  Requiere los tokens de components/landing/tema.module.css en un ancestro.
+*/
+
+.staff {
+  min-height: calc(100vh - 4rem);
+  font-family: var(--font-body), system-ui, sans-serif;
+  color: var(--color-tinta);
+}
+
+/* ---- Ancho completo ----
+   Los contenedores de página (no los modales) ocupan todo el ancho, como en el portal del paciente. */
+.staff :global(.max-w-5xl),
+.staff :global(.max-w-\[1400px\]) {
+  max-width: none;
+}
+
+/* ---- Tipografía ---- */
+.staff :global(.font-mono) {
+  font-family: var(--font-body), system-ui, sans-serif;
+  letter-spacing: 0.03em;
+}
+
+.staff h1,
+.staff h2 {
+  font-family: var(--font-display), Georgia, serif;
+  letter-spacing: -0.005em;
+}
+
+.staff h1 {
+  font-weight: 700;
+}
+
+/* ---- Textos ---- */
+.staff :global(.text-black),
+.staff :global(.text-slate-900),
+.staff :global(.text-slate-800) {
+  color: var(--color-tinta);
+}
+
+.staff :global(.text-slate-700),
+.staff :global(.text-slate-600) {
+  color: var(--color-tinta-suave);
+}
+
+.staff :global(.text-slate-500) {
+  color: #6b7b80;
+}
+
+.staff :global(.text-slate-400) {
+  color: #8a979b;
+}
+
+.staff :global(.text-slate-300) {
+  color: #b9c2c4;
+}
+
+.staff :global(.hover\:text-black):hover,
+.staff :global(.hover\:text-slate-900):hover {
+  color: var(--color-primario);
+}
+
+/* ---- Fondos ---- */
+.staff :global(.bg-slate-50) {
+  background-color: #fafaf7;
+}
+
+.staff :global(.bg-slate-100) {
+  background-color: var(--color-hueso);
+}
+
+.staff :global(.bg-slate-200) {
+  background-color: #e6e6df;
+}
+
+.staff :global(.hover\:bg-slate-50):hover {
+  background-color: #f6f6f1;
+}
+
+.staff :global(.hover\:bg-slate-100):hover,
+.staff :global(.hover\:bg-slate-200):hover {
+  background-color: #ececE5;
+}
+
+/* Negro / gris oscuro = botones principales y elementos seleccionados → teal */
+.staff :global(.bg-black),
+.staff :global(.bg-slate-900),
+.staff :global(.bg-slate-950) {
+  background-color: var(--color-primario);
+}
+
+.staff :global(.hover\:bg-slate-800):hover,
+.staff :global(.hover\:bg-slate-900):hover,
+.staff :global(.hover\:bg-black):hover {
+  background-color: var(--color-primario-hover);
+}
+
+/* ---- Bordes ---- */
+.staff :global(.border-slate-100) {
+  border-color: #efefe9;
+}
+
+.staff :global(.border-slate-200) {
+  border-color: #e4e4dd;
+}
+
+.staff :global(.border-slate-300) {
+  border-color: #d9dcd6;
+}
+
+.staff :global(.border-slate-400) {
+  border-color: #c4cacb;
+}
+
+.staff :global(.border-black),
+.staff :global(.border-slate-900),
+.staff :global(.border-slate-800) {
+  border-color: var(--color-primario);
+}
+
+.staff :global(.hover\:border-black):hover,
+.staff :global(.hover\:border-slate-400):hover,
+.staff :global(.hover\:border-slate-500):hover {
+  border-color: var(--color-primario);
+}
+
+.staff :global(.divide-slate-100) > * + * {
+  border-color: #efefe9;
+}
+
+/* ---- Foco ---- */
+.staff :global(.focus\:ring-slate-900):focus,
+.staff :global(.focus\:ring-black):focus {
+  box-shadow: 0 0 0 2px rgba(43, 122, 135, 0.35);
+}
+
+.staff :global(.focus\:border-black):focus,
+.staff :global(.focus\:border-slate-900):focus,
+.staff :global(.focus\:border-slate-400):focus {
+  border-color: var(--color-primario);
+}
+
+/* ---- Superficies ---- */
+.staff :global(.shadow-sm) {
+  box-shadow: 0 1px 2px rgba(27, 47, 54, 0.05);
+}
+
+.staff :global(.shadow-md) {
+  box-shadow: 0 6px 16px rgba(27, 47, 54, 0.12);
+}

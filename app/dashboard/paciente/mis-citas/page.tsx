@@ -1,8 +1,8 @@
-import Link from 'next/link'
-import { UserButton } from '@clerk/nextjs'
 import { getCurrentPatient } from '@/lib/auth'
 import { obtenerCitasPaciente } from '@/lib/services/citas-service'
 import MisCitas from './MisCitas'
+import BotonVolver from '@/components/ui/BotonVolver'
+import ui from '@/components/paciente/ui/ui.module.css'
 
 export default async function MisCitasPage() {
   const paciente = await getCurrentPatient()
@@ -30,46 +30,23 @@ export default async function MisCitasPage() {
   }))
 
   return (
-    <main className="min-h-screen bg-[#f8fafc] text-slate-900">
-      {/* Encabezado */}
-      <header className="border-t-4 border-black bg-white">
-        <div className="flex h-14 items-center justify-between border-b border-slate-200 px-6">
-          <h1 className="text-sm font-bold">
-            Mis Turnos
-          </h1>
-
-          <UserButton />
+    <main className={ui.pagina}>
+      <header className={ui.encabezado}>
+        <BotonVolver fallback="/dashboard/paciente" />
+        <div>
+          <h1 className={ui.titulo}>Mis turnos</h1>
+          <p className={ui.subtitulo}>
+            {citasFormateadas.length === 0
+              ? 'No tenés turnos próximos.'
+              : citasFormateadas.length === 1
+                ? 'Tenés 1 turno próximo.'
+                : `Tenés ${citasFormateadas.length} turnos próximos.`}{' '}
+            Podés cancelar hasta 48 hs antes.
+          </p>
         </div>
       </header>
 
-      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
-
-        {/* Navegación */}
-        <div className="space-y-3">
-          <Link
-            href="/dashboard/paciente"
-            className="text-xs text-slate-500 hover:text-slate-900"
-          >
-            ← Volver al portal
-          </Link>
-
-          {/* Breadcrumb */}
-          <p className="text-xs text-slate-700">
-            / Mis Turnos
-          </p>
-        </div>
-
-        {/* Pestañas */}
-        <div className="mt-6 border-b border-slate-300">
-          <h2 className="border-b-2 border-black px-0 pb-3 text-sm font-semibold">
-            Próximos Turnos ({citasFormateadas.length})
-          </h2>
-
-        </div>
-
-        <MisCitas citas={citasFormateadas} />
-
-      </div>
+      <MisCitas citas={citasFormateadas} />
     </main>
   )
 }

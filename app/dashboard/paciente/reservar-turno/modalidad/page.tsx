@@ -1,7 +1,13 @@
-import Link from 'next/link'
 import { getCurrentPatient } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { nombreEspecialidadMedica } from '@/lib/utils/especialidades-medicas'
+import BotonVolver from '@/components/ui/BotonVolver'
+import PantallaMensaje from '@/components/paciente/ui/PantallaMensaje'
+import { capitalizar, fechaLarga } from '@/components/paciente/ui/formato'
+import ui from '@/components/paciente/ui/ui.module.css'
 import ModalidadConsulta from './ModalidadConsulta'
+
+const VOLVER_A_MEDICOS = { href: '/dashboard/paciente/reservar-turno', label: 'Volver a médicos' }
 
 export default async function ModalidadPage({
   searchParams,
@@ -10,7 +16,13 @@ export default async function ModalidadPage({
 }) {
   const { turno: idTurno } = await searchParams
   if (!idTurno) {
-    return <Mensaje mensaje="No se recibió el turno seleccionado." />
+    return (
+      <PantallaMensaje
+        titulo="No se puede seleccionar la modalidad"
+        mensaje="No se recibió el turno seleccionado."
+        enlace={VOLVER_A_MEDICOS}
+      />
+    )
   }
 
   const [turno, paciente] = await Promise.all([
@@ -19,49 +31,41 @@ export default async function ModalidadPage({
   ])
 
   if (!turno || turno.estado !== 'DISPONIBLE' || turno.idPaciente) {
-    return <Mensaje mensaje="El turno seleccionado ya no está disponible." />
+    return (
+      <PantallaMensaje
+        titulo="No se puede seleccionar la modalidad"
+        mensaje="El turno seleccionado ya no está disponible."
+        enlace={VOLVER_A_MEDICOS}
+      />
+    )
   }
 
   return (
-    <main className="min-h-screen bg-[#f8fafc] p-4 text-slate-900 sm:p-6 lg:p-8">
-      <div className="mx-auto max-w-5xl">
-        <div className="mb-6">
-          <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-500">
-            Reservar turno / Paso 3 de 4
-          </p>
-          <h1 className="mt-2 text-2xl font-bold">Modalidad de la consulta</h1>
+    <main className={ui.pagina}>
+      <header className={ui.encabezado}>
+        <BotonVolver fallback={`/dashboard/paciente/reservar-turno/horarios/${turno.idMedico}`} />
+        <div>
+          <h1 className={ui.titulo}>¿Cómo vas a abonar la consulta?</h1>
+          <p className={ui.subtitulo}>Elegí si la consulta es particular o con tu obra social.</p>
         </div>
-        <ModalidadConsulta
-          idTurno={idTurno}
-          idMedico={turno.idMedico}
-          turno={{
-            medico: `${turno.medico.nombre} ${turno.medico.apellido}`,
-            especialidad: turno.medico.especialidad,
-            fecha: turno.fecha.toISOString().slice(0, 10),
-            hora: turno.hora,
-            consultorio: turno.medico.consultorio,
-          }}
-          coberturaInicial={{
-            obraSocial: paciente.obraSocial ?? '',
-            numeroAfiliado: paciente.numeroAfiliado ?? '',
-            plan: paciente.plan ?? '',
-          }}
-        />
-      </div>
-    </main>
-  )
-}
+      </header>
 
-function Mensaje({ mensaje }: { mensaje: string }) {
-  return (
-    <main className="min-h-screen bg-[#f8fafc] p-4 text-slate-900">
-      <div className="mx-auto max-w-5xl space-y-4">
-        <h1 className="text-2xl font-bold">No se puede seleccionar la modalidad</h1>
-        <p className="border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">{mensaje}</p>
-        <Link href="/dashboard/paciente/reservar-turno" className="text-xs text-slate-600 hover:text-slate-900">
-          Volver a médicos
-        </Link>
-      </div>
+      <ModalidadConsulta
+        idTurno={idTurno}
+        idMedico={turno.idMedico}
+        turno={{
+          medico: `${turno.medico.nombre} ${turno.medico.apellido}`,
+          especialidad: nombreEspecialidadMedica(turno.medico.especialidad),
+          fecha: capitalizar(fechaLarga(turno.fecha)),
+          hora: turno.hora,
+          consultorio: turno.medico.consultorio,
+        }}
+        coberturaInicial={{
+          obraSocial: paciente.obraSocial ?? '',
+          numeroAfiliado: paciente.numeroAfiliado ?? '',
+          plan: paciente.plan ?? '',
+        }}
+      />
     </main>
   )
 }

@@ -1,0 +1,102 @@
+.pagina {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  background: var(--color-hueso);
+}
+
+/* Panel izquierdo: misma foto y velo que el hero de la landing. */
+.panel {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 2.5rem clamp(1.5rem, 4vw, 3.5rem);
+  background:
+    linear-gradient(rgba(38, 60, 62, 0.66), rgba(27, 47, 54, 0.82)),
+    var(--auth-imagen) center / cover no-repeat,
+    linear-gradient(160deg, #7d918f 0%, #4d6364 55%, #2f4143 100%);
+  color: var(--color-crema);
+}
+
+.mensaje {
+  max-width: 30rem;
+}
+
+.titulo {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2.25rem, 4vw, 3.4rem);
+  line-height: 1.05;
+  color: var(--color-crema);
+  text-wrap: balance;
+}
+
+.texto {
+  margin-top: 1.25rem;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.88);
+  text-wrap: pretty;
+}
+
+.legal {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Columna derecha con el formulario. */
+.contenido {
+  display: flex;
+  flex-direction: column;
+  padding: 2rem clamp(1rem, 4vw, 3rem);
+}
+
+/* Triple clase: le gana a la regla global `a { color: #000 }`. */
+.pagina .contenido .volver {
+  align-self: flex-start;
+  display: inline-flex;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  color: var(--color-tinta-suave);
+  text-decoration: none;
+}
+
+.pagina .contenido .volver:hover {
+  color: var(--color-primario);
+}
+
+.formulario {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: 2rem 0;
+}
+
+@media (max-width: 860px) {
+  .pagina {
+    grid-template-columns: 1fr;
+  }
+
+  .panel {
+    position: static;
+    height: auto;
+    gap: 1.5rem;
+    padding: 1.5rem 1.25rem 2rem;
+  }
+
+  .titulo {
+    font-size: 1.9rem;
+  }
+
+  .texto,
+  .legal {
+    display: none;
+  }
+
+  .contenido {
+    padding-top: 1.25rem;
+  }
+}

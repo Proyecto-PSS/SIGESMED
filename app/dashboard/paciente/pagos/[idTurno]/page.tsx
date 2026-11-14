@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation'
 import { getCurrentPatient } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { obtenerTarifaConsulta } from '@/lib/config/pagos-config'
+import PantallaMensaje from '@/components/paciente/ui/PantallaMensaje'
 import PagoTurnoDetalle from './PagoTurnoDetalle'
 
 export default async function PagoTurnoPage({
@@ -33,20 +34,12 @@ export default async function PagoTurnoPage({
   // Si la modalidad no es PARTICULAR, no requiere pago particular
   if (turno.modalidad !== 'PARTICULAR') {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-        <div className="max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-sm text-center">
-          <h1 className="text-lg font-bold text-slate-900 mb-2">Consulta no arancelada</h1>
-          <p className="text-sm text-slate-600 mb-4">
-            Este turno fue registrado con modalidad {turno.modalidad ?? 'Cobertura médica'} y no requiere pago particular en línea.
-          </p>
-          <a
-            href="/dashboard/paciente/mis-citas"
-            className="inline-block bg-slate-900 px-4 py-2 text-xs font-semibold text-white rounded hover:bg-slate-800"
-          >
-            Volver a Mis Citas
-          </a>
-        </div>
-      </div>
+      <PantallaMensaje
+        titulo="Esta consulta no se abona online"
+        mensaje="El turno está registrado con tu obra social, así que no tenés que pagarlo en línea."
+        enlace={{ href: '/dashboard/paciente/mis-citas', label: 'Volver a mis turnos' }}
+        tono="info"
+      />
     )
   }
 

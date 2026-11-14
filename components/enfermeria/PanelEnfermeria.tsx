@@ -262,26 +262,23 @@ export default function PanelEnfermeria({ enfermera, userButtonSlot }: PanelEnfe
           />
         </div>
 
-        <div className="flex items-center gap-4 self-end sm:self-auto">
-          <div className="text-right">
-            <span className="font-mono font-bold text-xs uppercase tracking-wider text-slate-900 block leading-tight">
-              ENF. {enfermera.nombre} {enfermera.apellido}
-            </span>
-            <span className="font-mono text-[10px] text-slate-500 uppercase tracking-widest block mt-0.5">
-              VACUNATORIO CENTRAL {enfermera.matricula ? `· MAT. ${enfermera.matricula}` : ''}
-            </span>
-          </div>
+        {/* Nombre y avatar: si no se pasa userButtonSlot, los muestra la barra superior del portal. */}
+        {userButtonSlot && (
+          <div className="flex items-center gap-4 self-end sm:self-auto">
+            <div className="text-right">
+              <span className="font-mono font-bold text-xs uppercase tracking-wider text-slate-900 block leading-tight">
+                ENF. {enfermera.nombre} {enfermera.apellido}
+              </span>
+              <span className="font-mono text-[10px] text-slate-500 uppercase tracking-widest block mt-0.5">
+                VACUNATORIO CENTRAL {enfermera.matricula ? `· MAT. ${enfermera.matricula}` : ''}
+              </span>
+            </div>
 
-          <div className="h-7 w-[1px] bg-slate-300" />
+            <div className="h-7 w-[1px] bg-slate-300" />
 
-          <div className="flex items-center justify-center">
-            {userButtonSlot || (
-              <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-bold text-xs">
-                👤
-              </div>
-            )}
+            <div className="flex items-center justify-center">{userButtonSlot}</div>
           </div>
-        </div>
+        )}
       </header>
 
       {/* Banner de contingencia si se desconecta */}

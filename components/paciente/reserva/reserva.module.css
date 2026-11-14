@@ -1,0 +1,115 @@
+/* Estilos compartidos por las pantallas del flujo de reserva. */
+.pagina {
+  padding: clamp(1.5rem, 3vw, 2.5rem) clamp(1rem, 2.5vw, 2rem) 4rem;
+}
+
+.encabezado {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+}
+
+.titulo {
+  font-family: var(--font-display), Georgia, serif;
+  font-weight: 700;
+  font-size: clamp(1.75rem, 3vw, 2.25rem);
+  line-height: 1.15;
+  color: var(--color-tinta);
+}
+
+.subtitulo {
+  margin-top: 0.4rem;
+  color: var(--color-tinta-suave);
+}
+
+.resultado {
+  margin-top: 1.5rem;
+  font-size: 0.85rem;
+  color: #6b7b80;
+}
+
+.grilla {
+  list-style: none;
+  margin-top: 0.75rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr));
+  gap: 1rem;
+}
+
+.vacio {
+  padding: 2rem;
+  border: 1px dashed #cfd3cc;
+  border-radius: 10px;
+  background: #ffffff;
+  color: var(--color-tinta-suave);
+  text-align: center;
+}
+
+/* Pie de la tarjeta del médico en la reserva. */
+.proximo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 8px;
+  background: #eef5f5;
+}
+
+.proximoSinTurnos {
+  background: var(--color-hueso);
+}
+
+.proximoLabel {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-primario);
+}
+
+.proximoSinTurnos .proximoLabel {
+  color: #8a979b;
+}
+
+.proximoValor {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-tinta);
+}
+
+.proximoSinTurnos .proximoValor {
+  font-weight: 500;
+  color: var(--color-tinta-suave);
+}
+
+/* Triple clase: le gana a la regla global `a { color: #000 }`. */
+.grilla li .boton {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  background: var(--color-primario);
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.grilla li .boton:hover {
+  background: var(--color-primario-hover);
+}
+
+.grilla li .botonSecundario {
+  background: #ffffff;
+  border: 1px solid #d9dcd6;
+  color: var(--color-tinta-suave);
+}
+
+.grilla li .botonSecundario:hover {
+  background: #ffffff;
+  border-color: var(--color-primario);
+  color: var(--color-tinta);
+}

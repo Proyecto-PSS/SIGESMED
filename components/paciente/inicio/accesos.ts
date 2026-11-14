@@ -1,0 +1,38 @@
+// Tarjetas de la pantalla de inicio del paciente. Editá acá textos, links e imágenes.
+// Las fotos van en public/images/paciente/.
+
+export interface Acceso {
+  href: string
+  bajada: string
+  titulo: string
+  descripcion: string
+  boton: string
+  imagen: string
+}
+
+export const ACCESOS: Acceso[] = [
+  {
+    href: '/dashboard/paciente/reservar-turno',
+    bajada: 'Atención médica',
+    titulo: 'Turnos',
+    descripcion: 'Reservá tu consulta según la disponibilidad de cada profesional.',
+    boton: 'Solicitar nuevo turno',
+    imagen: '/images/paciente/turnos-calendario.jpg',
+  },
+  {
+    href: '/dashboard/paciente/medicos',
+    bajada: 'Médicos y especialidades',
+    titulo: 'Profesionales',
+    descripcion: 'Consultá nuestra cartilla médica.',
+    boton: 'Ver especialistas',
+    imagen: '/images/paciente/estetoscopio.webp',
+  },
+  {
+    href: '/dashboard/paciente/historia-clinica',
+    bajada: 'Mi ficha médica',
+    titulo: 'Historia Clínica',
+    descripcion: 'Revisá todas tus consultas anteriores.',
+    boton: 'Explorar historial',
+    imagen: '/images/paciente/historial.jpeg',
+  },
+]

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useState, useRef } from 'react'
 import { RESERVA_CONFIG } from '@/lib/config/reserva-config'
 import { esperar, fetchConTimeout } from '@/lib/utils/resilient-fetch'
+import ui from '@/components/paciente/ui/ui.module.css'
 
 type Props = {
   idTurno: string
@@ -190,39 +191,31 @@ export default function ConfirmarReserva({ idTurno, idMedico, modalidad }: Props
     }
   }
 
+  const urlHorarios = `/dashboard/paciente/reservar-turno/horarios/${idMedico}`
+
   if (estado === 'confirmado') {
     return (
-      <section className="space-y-3" role="status" aria-live="polite">
-        <div className="border border-green-200 bg-green-50 p-4 text-sm text-green-800">
-          <p className="mb-1 text-base font-bold">¡Turno confirmado!</p>
-          <p>Turno confirmado correctamente. Se registró la reserva a nombre del paciente.</p>
+      <section className={ui.pila} role="status" aria-live="polite">
+        <div className={`${ui.alerta} ${ui.alertaExito}`}>
+          <strong>¡Turno confirmado!</strong>
+          <br />
+          La reserva quedó registrada a tu nombre.
         </div>
 
         {modalidad === 'PARTICULAR' ? (
-          <Link
-            href={`/dashboard/paciente/pagos/${idTurno}`}
-            className="block bg-emerald-700 px-4 py-3 text-center text-xs font-semibold uppercase text-white hover:bg-emerald-800"
-          >
-            Continuar a pagos
+          <Link href={`/dashboard/paciente/pagos/${idTurno}`} className={`${ui.botonPrimario} ${ui.botonAncho}`}>
+            Continuar al pago
+            <span aria-hidden="true">→</span>
           </Link>
         ) : (
-          <div className="border border-slate-200 bg-slate-50 p-4 text-center text-xs text-slate-700">
-            La cobertura médica quedó asociada a este turno.
-          </div>
+          <p className={`${ui.alerta} ${ui.alertaInfo}`}>Tu obra social quedó asociada a este turno.</p>
         )}
 
         <Link
           href="/dashboard/paciente/mis-citas"
-          className="block bg-black px-4 py-3 text-center text-xs font-semibold uppercase text-white hover:bg-slate-800"
+          className={`${modalidad === 'PARTICULAR' ? ui.botonSecundario : ui.botonPrimario} ${ui.botonAncho}`}
         >
-          Ver mis turnos (Mis Citas)
-        </Link>
-
-        <Link
-          href={`/dashboard/paciente/reservar-turno/horarios/${idMedico}`}
-          className="block border border-slate-300 bg-white px-4 py-3 text-center text-xs font-semibold text-slate-800 hover:bg-slate-50"
-        >
-          Volver a horarios
+          Ver mis turnos
         </Link>
       </section>
     )
@@ -230,16 +223,13 @@ export default function ConfirmarReserva({ idTurno, idMedico, modalidad }: Props
 
   if (estado === 'conflicto') {
     return (
-      <section className="space-y-3" role="alert">
-        <div className="border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-          <p className="mb-1 font-bold">Turno no disponible</p>
-          <p>{mensaje || 'Este turno ya no está disponible.'}</p>
+      <section className={ui.pila} role="alert">
+        <div className={`${ui.alerta} ${ui.alertaError}`}>
+          <strong>Turno no disponible</strong>
+          <br />
+          {mensaje || 'Este turno ya no está disponible.'}
         </div>
-
-        <Link
-          href={`/dashboard/paciente/reservar-turno/horarios/${idMedico}`}
-          className="block bg-black px-4 py-3 text-center text-xs font-semibold text-white hover:bg-slate-800"
-        >
+        <Link href={urlHorarios} className={`${ui.botonPrimario} ${ui.botonAncho}`}>
           Ver otros horarios
         </Link>
       </section>
@@ -248,35 +238,20 @@ export default function ConfirmarReserva({ idTurno, idMedico, modalidad }: Props
 
   if (estado === 'verificacion_pendiente') {
     return (
-      <section className="space-y-3" role="alert">
-        <div className="border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
-          <p className="mb-1 font-bold">Verificación pendiente</p>
-          <p>
-            No pudimos determinar si tu reserva fue completada debido a una falla de conexión.
-            El turno puede haber sido procesado por el servidor. Por favor, reverificá el estado
-            antes de realizar una nueva reserva.
-          </p>
+      <section className={ui.pila} role="alert">
+        <div className={`${ui.alerta} ${ui.alertaAviso}`}>
+          <strong>Verificación pendiente</strong>
+          <br />
+          No pudimos saber si tu reserva se completó por una falla de conexión. Puede que el turno ya esté
+          registrado: verificá el estado antes de intentar reservar de nuevo.
         </div>
-
-        <button
-          type="button"
-          onClick={() => verificarEstado()}
-          className="flex w-full items-center justify-center gap-2 bg-black px-4 py-3 text-center text-xs font-semibold uppercase text-white hover:bg-slate-800"
-        >
-          Reverificar estado de la reserva
+        <button type="button" onClick={() => verificarEstado()} className={`${ui.botonPrimario} ${ui.botonAncho}`}>
+          Verificar estado de la reserva
         </button>
-
-        <Link
-          href="/dashboard/paciente/mis-citas"
-          className="block border border-slate-300 bg-white px-4 py-3 text-center text-xs font-semibold text-slate-800 hover:bg-slate-50"
-        >
-          Consultar Mis Citas
+        <Link href="/dashboard/paciente/mis-citas" className={`${ui.botonSecundario} ${ui.botonAncho}`}>
+          Consultar mis turnos
         </Link>
-
-        <Link
-          href={`/dashboard/paciente/reservar-turno/horarios/${idMedico}`}
-          className="block text-center text-xs text-slate-600 no-underline hover:text-slate-900"
-        >
+        <Link href={urlHorarios} className={ui.linkSuave}>
           Volver a horarios
         </Link>
       </section>
@@ -285,23 +260,14 @@ export default function ConfirmarReserva({ idTurno, idMedico, modalidad }: Props
 
   if (estado === 'error') {
     return (
-      <section className="space-y-3" role="alert">
-        <p className="border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+      <section className={ui.pila} role="alert">
+        <p className={`${ui.alerta} ${ui.alertaError}`}>
           {mensaje || 'No pudimos confirmar el turno. Por favor, intentá nuevamente.'}
         </p>
-
-        <button
-          type="button"
-          onClick={confirmar}
-          className="w-full bg-black px-4 py-3 text-center text-xs font-semibold uppercase text-white hover:bg-slate-800"
-        >
+        <button type="button" onClick={confirmar} className={`${ui.botonPrimario} ${ui.botonAncho}`}>
           Intentar nuevamente
         </button>
-
-        <Link
-          href={`/dashboard/paciente/reservar-turno/horarios/${idMedico}`}
-          className="block text-center text-xs text-slate-600 no-underline hover:text-slate-900"
-        >
+        <Link href={urlHorarios} className={ui.linkSuave}>
           Volver a horarios disponibles
         </Link>
       </section>
@@ -312,26 +278,18 @@ export default function ConfirmarReserva({ idTurno, idMedico, modalidad }: Props
     estado === 'cargando' || estado === 'reintentando' || estado === 'verificando'
 
   return (
-    <section className="space-y-3">
+    <section className={ui.pila}>
       {estado === 'reintentando' && (
-        <div
-          className="flex items-center gap-2 border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800"
-          role="status"
-          aria-live="polite"
-        >
-          <Spinner />
-          <span>Error de conexión, reintentando...</span>
+        <div className={`${ui.alerta} ${ui.alertaAviso} ${ui.conIcono}`} role="status" aria-live="polite">
+          <span className={ui.spinner} aria-hidden="true" />
+          <span>Error de conexión, reintentando…</span>
         </div>
       )}
 
       {estado === 'verificando' && (
-        <div
-          className="flex items-center gap-2 border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800"
-          role="status"
-          aria-live="polite"
-        >
-          <Spinner />
-          <span>Estamos verificando tu reserva...</span>
+        <div className={`${ui.alerta} ${ui.alertaInfo} ${ui.conIcono}`} role="status" aria-live="polite">
+          <span className={ui.spinner} aria-hidden="true" />
+          <span>Estamos verificando tu reserva…</span>
         </div>
       )}
 
@@ -339,52 +297,23 @@ export default function ConfirmarReserva({ idTurno, idMedico, modalidad }: Props
         type="button"
         onClick={confirmar}
         disabled={estaProcesando}
-        className="flex w-full items-center justify-center gap-2 bg-black px-4 py-3 text-xs font-semibold uppercase text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+        className={`${ui.botonPrimario} ${ui.botonAncho}`}
       >
-        {estaProcesando && <Spinner />}
+        {estaProcesando && <span className={ui.spinner} aria-hidden="true" />}
         <span>
           {estado === 'cargando'
-            ? 'Confirmando...'
+            ? 'Confirmando…'
             : estado === 'reintentando'
-              ? 'Reintentando...'
+              ? 'Reintentando…'
               : estado === 'verificando'
-                ? 'Verificando...'
-                : 'Confirmar Turno'}
+                ? 'Verificando…'
+                : 'Confirmar turno'}
         </span>
       </button>
 
-      <Link
-        href={`/dashboard/paciente/reservar-turno/horarios/${idMedico}`}
-        className="block text-center text-xs text-slate-600 no-underline hover:text-slate-900"
-      >
-        Cancelar / Volver
+      <Link href={urlHorarios} className={ui.linkSuave}>
+        Cancelar y volver a horarios
       </Link>
     </section>
-  )
-}
-
-function Spinner() {
-  return (
-    <svg
-      className="h-4 w-4 animate-spin text-current"
-      xmlns="http://www.w3.org/2000/svg"
-      fill="none"
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-    >
-      <circle
-        className="opacity-25"
-        cx="12"
-        cy="12"
-        r="10"
-        stroke="currentColor"
-        strokeWidth="4"
-      />
-      <path
-        className="opacity-75"
-        fill="currentColor"
-        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-      />
-    </svg>
   )
 }

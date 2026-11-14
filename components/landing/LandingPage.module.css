@@ -1,0 +1,5 @@
+/* Los colores y medidas viven en tema.module.css. */
+.landing {
+  min-height: 100vh;
+  background: var(--color-hueso);
+}

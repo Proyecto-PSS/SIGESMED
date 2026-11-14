@@ -1,0 +1,107 @@
+.footer {
+  background: var(--color-hueso);
+  border-top: 1px solid #d9dcd6;
+  color: var(--color-tinta);
+  /* Mismo margen lateral que la barra del paciente: las líneas llegan hasta las esquinas. */
+  padding: 3rem clamp(1rem, 2.5vw, 2rem) 2.5rem;
+  scroll-margin-top: var(--alto-navbar);
+}
+
+.contenedor {
+  width: 100%;
+}
+
+.marca {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2.75rem, 7vw, 4.25rem);
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-align: center;
+}
+
+.divisorClaro,
+.divisorOscuro {
+  border: 0;
+  height: 1px;
+}
+
+.divisorClaro {
+  margin: 2.75rem 0 2.75rem;
+  background: #9a9fa1;
+}
+
+.divisorOscuro {
+  margin: 2.75rem 0 2.5rem;
+  background: var(--color-tinta);
+}
+
+.columnas {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+}
+
+.columna:nth-child(1) { text-align: left; }
+.columna:nth-child(2) { text-align: center; }
+.columna:nth-child(3) { text-align: right; }
+
+.columnaTitulo {
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+}
+
+.lista {
+  list-style: none;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+/* Triple clase: le gana a la regla global `a { color: #000 }`. */
+.footer .lista .link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.footer .lista .link:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.cierre {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.sello {
+  display: grid;
+  place-items: center;
+  width: 4rem;
+  height: 4rem;
+  background: #e9e2d6;
+  color: var(--color-tinta);
+}
+
+.sello svg {
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
+.legal {
+  font-size: 0.95rem;
+  text-align: center;
+}
+
+@media (max-width: 700px) {
+  .columnas {
+    grid-template-columns: 1fr;
+  }
+
+  .columna:nth-child(n) {
+    text-align: center;
+  }
+}

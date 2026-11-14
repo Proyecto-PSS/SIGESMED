@@ -1,0 +1,47 @@
+.seccion {
+  background: var(--color-arena);
+  padding: clamp(4rem, 9vw, 7rem) 1rem;
+  scroll-margin-top: var(--alto-navbar);
+}
+
+.contenedor {
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+.titulo {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(1.75rem, 4vw, 2.6rem);
+  line-height: 1.15;
+  color: var(--color-tinta);
+  text-align: center;
+  text-wrap: balance;
+}
+
+.grilla {
+  list-style: none;
+  margin-top: 3rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1.25rem;
+}
+
+.tarjeta {
+  background: #ffffff;
+  padding: 2rem 1.75rem;
+  border-top: 3px solid var(--color-primario);
+}
+
+.tarjetaTitulo {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.3rem;
+  color: var(--color-tinta);
+}
+
+.tarjetaTexto {
+  margin-top: 0.75rem;
+  color: var(--color-tinta-suave);
+  line-height: 1.6;
+}

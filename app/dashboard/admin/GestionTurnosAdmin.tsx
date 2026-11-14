@@ -356,7 +356,7 @@ export default function GestionTurnosAdmin() {
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: 'center', padding: '36px', color: '#64748b' }}>
+                <td colSpan={6} style={{ textAlign: 'center', padding: '36px', color: '#6b7b80' }}>
                   Cargando turnos...
                 </td>
               </tr>
@@ -372,30 +372,30 @@ export default function GestionTurnosAdmin() {
                   <td>
                     {turno.paciente ? (
                       <div>
-                        <div style={{ fontWeight: 700, color: '#0f172a' }}>
+                        <div style={{ fontWeight: 700, color: 'var(--color-tinta)' }}>
                           {turno.paciente.nombre} {turno.paciente.apellido}
                         </div>
-                        <div style={{ fontSize: '11px', color: '#64748b' }}>
+                        <div style={{ fontSize: '11px', color: '#6b7b80' }}>
                           DNI {turno.paciente.dni} • {turno.paciente.email}
                         </div>
                       </div>
                     ) : (
-                      <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Sin paciente asignado</span>
+                      <span style={{ color: '#8a979b', fontStyle: 'italic' }}>Sin paciente asignado</span>
                     )}
                   </td>
                   <td>
-                    <div style={{ fontWeight: 600, color: '#0f172a' }}>
+                    <div style={{ fontWeight: 600, color: 'var(--color-tinta)' }}>
                       Dr./Dra. {turno.medico.nombre} {turno.medico.apellido}
                     </div>
-                    <div style={{ fontSize: '11px', color: '#64748b' }}>
+                    <div style={{ fontSize: '11px', color: '#6b7b80' }}>
                       {turno.medico.especialidad.replace(/_/g, ' ')}
                     </div>
                   </td>
                   <td>
-                    <div style={{ fontWeight: 600, color: '#0f172a' }}>
+                    <div style={{ fontWeight: 600, color: 'var(--color-tinta)' }}>
                       {turno.fecha}
                     </div>
-                    <div style={{ fontSize: '12px', color: '#64748b' }}>
+                    <div style={{ fontSize: '12px', color: '#6b7b80' }}>
                       {turno.hora} hs ({turno.duracionMinutos} min)
                     </div>
                   </td>
@@ -522,7 +522,7 @@ export default function GestionTurnosAdmin() {
               Notificar cancelación al paciente
             </h3>
 
-            <p style={{ fontSize: '13px', color: '#475569', lineHeight: 1.5, marginBottom: '16px' }}>
+            <p style={{ fontSize: '13px', color: 'var(--color-tinta-suave)', lineHeight: 1.5, marginBottom: '16px' }}>
               Se enviará un correo formal institucional informando al paciente que su turno fue cancelado
               debido a modificaciones en los horarios de atención del profesional.
             </p>

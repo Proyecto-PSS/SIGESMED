@@ -1,0 +1,18 @@
+/* Tokens de diseño compartidos (landing, login). Aplicá la clase `.tema` al contenedor raíz. */
+.tema {
+  --color-primario: #2b7a87;
+  --color-primario-hover: #236670;
+  --color-tinta: #1b2f36;
+  --color-tinta-suave: #3c4f55;
+  --color-crema: #faf6ee;
+  --color-arena: #f5ede4;
+  --color-hueso: #f1f1ec;
+  --alto-navbar: 76px;
+
+  font-family: var(--font-body), system-ui, sans-serif;
+  color: var(--color-tinta);
+}
+
+.tema :where(h1, h2, h3, p) {
+  margin: 0;
+}

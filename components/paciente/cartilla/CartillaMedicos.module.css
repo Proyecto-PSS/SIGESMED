@@ -1,0 +1,45 @@
+.pagina {
+  padding: clamp(1.5rem, 3vw, 2.5rem) clamp(1rem, 2.5vw, 2rem) 4rem;
+}
+
+.encabezado {
+  margin-bottom: 1.5rem;
+}
+
+.titulo {
+  margin-top: 1rem;
+  font-family: var(--font-display), Georgia, serif;
+  font-weight: 700;
+  font-size: clamp(1.75rem, 3vw, 2.25rem);
+  line-height: 1.15;
+  color: var(--color-tinta);
+}
+
+.subtitulo {
+  margin-top: 0.4rem;
+  color: var(--color-tinta-suave);
+}
+
+.resultado {
+  margin-top: 1.5rem;
+  font-size: 0.85rem;
+  color: #6b7b80;
+}
+
+.grilla {
+  list-style: none;
+  margin-top: 0.75rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr));
+  gap: 1rem;
+}
+
+.vacio {
+  margin-top: 0.75rem;
+  padding: 2rem;
+  border: 1px dashed #cfd3cc;
+  border-radius: 10px;
+  background: #ffffff;
+  color: var(--color-tinta-suave);
+  text-align: center;
+}

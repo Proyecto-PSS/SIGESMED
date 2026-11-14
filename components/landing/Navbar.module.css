@@ -1,0 +1,80 @@
+.header {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 50;
+  background: rgba(233, 237, 235, 0.82);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(18, 49, 58, 0.06);
+}
+
+.contenedor {
+  max-width: 1280px;
+  margin: 0 auto;
+  height: var(--alto-navbar);
+  padding: 0 clamp(1rem, 3vw, 2.5rem);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+}
+
+.links {
+  list-style: none;
+  display: flex;
+  gap: clamp(1.5rem, 5vw, 4rem);
+}
+
+/* Triple clase: le gana a la regla global `a { color: #000 }`. */
+.header .links .link {
+  color: var(--color-tinta-suave);
+  font-size: 0.975rem;
+  text-decoration: none;
+  text-underline-offset: 0.3em;
+  transition: color 0.15s ease;
+}
+
+.header .links .link:hover,
+.header .links .activo {
+  color: var(--color-tinta);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+}
+
+.header .contenedor .boton {
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.7rem 2rem;
+  background: var(--color-primario);
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 500;
+  text-decoration: none;
+  border-radius: 2px;
+  transition: background 0.15s ease;
+}
+
+.header .contenedor .boton:hover {
+  background: var(--color-primario-hover);
+}
+
+.header .contenedor .boton:focus-visible,
+.header .links .link:focus-visible {
+  outline: 2px solid var(--color-primario);
+  outline-offset: 3px;
+}
+
+@media (max-width: 760px) {
+  .contenedor {
+    grid-template-columns: auto 1fr;
+  }
+
+  .links {
+    display: none;
+  }
+
+  .header .contenedor .boton {
+    padding: 0.55rem 1.25rem;
+    font-size: 0.925rem;
+  }
+}

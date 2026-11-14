@@ -1,0 +1,32 @@
+/* Selectores con 3 niveles para ganarle a la regla global `a { color: #000 }` de globals.css. */
+.logo.logo.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  text-decoration: none;
+}
+
+.oscuro.oscuro.oscuro {
+  color: var(--color-tinta);
+}
+
+.claro.claro.claro {
+  color: var(--color-crema);
+}
+
+.icono {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--color-primario);
+}
+
+.claro .icono {
+  color: currentColor;
+}
+
+.texto {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: 0.01em;
+}
