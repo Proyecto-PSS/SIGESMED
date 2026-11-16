@@ -69,6 +69,12 @@ enum EstadoComprobante {
   ERROR
 }
 
+enum TipoDiagnostico {
+  PRESUNTIVO
+  DEFINITIVO
+  EN_ESTUDIO
+}
+
 model Medico {
   idMedico     String             @id @map("id_medico")
   nombre       String
@@ -83,6 +89,7 @@ model Medico {
 
   disponibilidades DisponibilidadMedica[]
   turnos           Turno[]
+  atenciones       AtencionMedica[]
 
   @@map("medicos")
 }
@@ -105,6 +112,7 @@ model Paciente {
   turnosVacunacion  TurnoVacunacion[]
   recordatorios     RecordatorioTurno[]
   pagos             PagoTurno[]
+  atenciones        AtencionMedica[]
 
   @@map("pacientes")
 }
@@ -365,5 +373,26 @@ model ComprobantePago {
   @@index([fechaEmision])
   @@map("comprobantes_pago")
 }
+
+model AtencionMedica {
+  idAtencion                 String          @id @default(cuid()) @map("id_atencion")
+  idPaciente                 String          @map("id_paciente")
+  idMedico                   String          @map("id_medico")
+  diagnosticoPrincipal       String          @map("diagnostico_principal") @db.Text
+  tipoDiagnostico            TipoDiagnostico @map("tipo_diagnostico")
+  observacionesClinicas      String?         @map("observaciones_clinicas") @db.Text
+  detalleTratamiento         String?         @map("detalle_tratamiento") @db.Text
+  indicacionesFarmacologicas String?         @map("indicaciones_farmacologicas") @db.Text
+  createdAt                  DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                  DateTime        @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  paciente Paciente @relation(fields: [idPaciente], references: [idPaciente], onDelete: Restrict)
+  medico   Medico   @relation(fields: [idMedico], references: [idMedico], onDelete: Restrict)
+
+  @@index([idPaciente, createdAt])
+  @@index([idMedico, createdAt])
+  @@map("atenciones_medicas")
+}
+
 
 

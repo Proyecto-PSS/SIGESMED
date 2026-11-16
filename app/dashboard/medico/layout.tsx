@@ -13,6 +13,7 @@ export default async function MedicoLayout({ children }: { children: React.React
       secciones={[
         { href: BASE, label: 'Inicio', exacto: true },
         { href: `${BASE}/agenda`, label: 'Agenda' },
+        { href: `${BASE}/fichas-clinicas`, label: 'Fichas clínicas' },
       ]}
       nombre={nombre}
       rol={usuario?.especialidad ?? 'Profesional'}

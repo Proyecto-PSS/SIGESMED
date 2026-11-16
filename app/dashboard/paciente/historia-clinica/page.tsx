@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { getCurrentPatient } from '@/lib/auth'
 import { contarEstadosHistorialTurnos, obtenerHistorialTurnosPaciente } from '@/lib/services/citas-service'
 import { nombreEspecialidadMedica } from '@/lib/utils/especialidades-medicas'
@@ -56,7 +57,16 @@ export default async function HistoriaClinicaPage({
 }: {
   searchParams: Promise<{ estado?: ParametroBusqueda; desde?: ParametroBusqueda; hasta?: ParametroBusqueda; ordenar?: ParametroBusqueda }>
 }) {
-  const paciente = await getCurrentPatient()
+  let paciente: Awaited<ReturnType<typeof getCurrentPatient>>
+  try {
+    paciente = await getCurrentPatient()
+  } catch (error: any) {
+    if (error?.statusCode === 401) {
+      redirect('/sign-in')
+    }
+    redirect('/acceso-denegado')
+  }
+
   const parametros = await searchParams
   const estadoFiltro = primerParametro(parametros.estado)
   const desdeFiltro = primerParametro(parametros.desde)
@@ -95,7 +105,7 @@ export default async function HistoriaClinicaPage({
       <header className={ui.encabezado}>
         <BotonVolver fallback="/dashboard/paciente" />
         <div>
-          <h1 className={ui.titulo}>Historia clínica</h1>
+          <h1 className={ui.titulo}>Historial de turnos</h1>
           <p className={ui.subtitulo}>Todas tus consultas: reservadas, asistidas, ausentes y canceladas.</p>
         </div>
       </header>

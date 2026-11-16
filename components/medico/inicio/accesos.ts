@@ -11,12 +11,11 @@ export const ACCESOS_MEDICO: Acceso[] = [
     imagen: '/images/paciente/turnos-calendario.jpg',
   },
   {
-    href: '/dashboard/medico',
+    href: '/dashboard/medico/fichas-clinicas',
     bajada: 'Atención / historial',
-    titulo: 'Fichas clínicas',
+    titulo: 'Fichas clínicas de pacientes',
     descripcion: 'Buscá pacientes por DNI y registrá diagnósticos y tratamientos.',
-    boton: 'Próximamente',
+    boton: 'Gestionar fichas clínicas',
     imagen: '/images/paciente/historial.jpeg',
-    proximamente: true,
   },
 ]

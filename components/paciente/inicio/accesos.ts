@@ -39,10 +39,18 @@ export const ACCESOS: Acceso[] = [
   },
   {
     href: '/dashboard/paciente/historia-clinica',
+    bajada: 'Consultas anteriores',
+    titulo: 'Historial de Turnos',
+    descripcion: 'Revisá todas tus consultas anteriores: reservadas, asistidas, ausentes y canceladas.',
+    boton: 'Ver historial de turnos',
+    imagen: '/images/paciente/turnos-calendario.jpg',
+  },
+  {
+    href: '/dashboard/paciente/historial-clinico',
     bajada: 'Mi ficha médica',
-    titulo: 'Historia Clínica',
-    descripcion: 'Revisá todas tus consultas anteriores.',
-    boton: 'Explorar historial',
+    titulo: 'Historial Clínico',
+    descripcion: 'Consultá los diagnósticos, observaciones y tratamientos registrados por tus médicos.',
+    boton: 'Explorar historial clínico',
     imagen: '/images/paciente/historial.jpeg',
   },
 ]
