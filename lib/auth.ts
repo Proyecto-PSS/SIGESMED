@@ -224,6 +224,8 @@ export async function getCurrentMedicalUser(): Promise<MedicoPerfil> {
   }
 }
 
+export const getCurrentMedico = getCurrentMedicalUser
+
 export async function getCurrentNurseUser(): Promise<SessionUser> {
   const user = await getCurrentUser()
   if (!user) throw errorConEstado('No autorizado: sesión no encontrada o perfil inexistente.', 401)

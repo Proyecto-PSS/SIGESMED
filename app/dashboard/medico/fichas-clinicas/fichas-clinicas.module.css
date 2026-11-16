@@ -1,0 +1,345 @@
+/* Estilos para la sección Fichas clínicas de pacientes (US-38).
+   Usa los tokens de tema del portal médico (components/landing/tema.module.css). */
+
+.pagina {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: clamp(1.5rem, 3vw, 2.5rem) clamp(1rem, 2.5vw, 2rem) 4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.encabezado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.eyebrow {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-primario);
+  margin-bottom: 0.35rem;
+}
+
+.titulo {
+  font-family: var(--font-display), Georgia, serif;
+  font-weight: 700;
+  font-size: clamp(1.75rem, 3vw, 2.25rem);
+  line-height: 1.15;
+  color: var(--color-tinta);
+  margin: 0;
+}
+
+.subtitulo {
+  margin: 0.35rem 0 0;
+  font-size: 0.95rem;
+  color: var(--color-tinta-suave);
+}
+
+/* ---- Buscador y listado de pacientes ---- */
+.buscador {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+.buscadorInput {
+  flex: 1 1 18rem;
+}
+
+.grillaPacientes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr));
+  gap: 1rem;
+  list-style: none;
+  padding: 0;
+  margin: 1.25rem 0 0;
+}
+
+.tarjetaPaciente {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.15rem 1.25rem;
+  background: #ffffff;
+  border: 1px solid #e4e4dd;
+  border-radius: 10px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.tarjetaPaciente:hover {
+  border-color: var(--color-primario);
+}
+
+.tarjetaPacienteActiva {
+  border-color: var(--color-primario);
+  background: #f3f9f9;
+  box-shadow: 0 0 0 1px var(--color-primario);
+}
+
+.pacienteNombre {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-tinta);
+  margin: 0;
+}
+
+.pacienteMeta {
+  margin: 0.25rem 0 0;
+  font-size: 0.82rem;
+  color: var(--color-tinta-suave);
+  line-height: 1.45;
+}
+
+.pacientePie {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #efefe9;
+}
+
+/* ---- Cabecera de ficha seleccionada ---- */
+.fichaCabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  background: #ffffff;
+  border: 1px solid #d5e4e6;
+  border-left: 4px solid var(--color-primario);
+  border-radius: 10px;
+}
+
+.fichaDatosPrincipales {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.fichaPacienteTitulo {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--color-tinta);
+  margin: 0;
+}
+
+.fichaMetadatos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  font-size: 0.85rem;
+  color: var(--color-tinta-suave);
+}
+
+/* ---- Layout de Ficha: Formulario + Historial ---- */
+.layoutFicha {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (max-width: 960px) {
+  .layoutFicha {
+    grid-template-columns: 1fr;
+  }
+}
+
+.formularioContenedor {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.apartado {
+  padding: clamp(1.25rem, 2vw, 1.5rem);
+  background: #ffffff;
+  border: 1px solid #e4e4dd;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.apartadoEncabezado {
+  border-bottom: 1px solid #efefe9;
+  padding-bottom: 0.75rem;
+}
+
+.apartadoTitulo {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-tinta);
+  margin: 0;
+}
+
+.apartadoDescripcion {
+  margin: 0.25rem 0 0;
+  font-size: 0.84rem;
+  color: var(--color-tinta-suave);
+}
+
+.requerido {
+  color: #a3261e;
+  margin-left: 0.2rem;
+}
+
+.textareaAmplio {
+  min-height: 6.25rem;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.barraAcciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: #ffffff;
+  border: 1px solid #e4e4dd;
+  border-radius: 10px;
+}
+
+/* ---- Historial Clínico ---- */
+.historialContenedor {
+  padding: clamp(1.25rem, 2vw, 1.5rem);
+  background: #ffffff;
+  border: 1px solid #e4e4dd;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.listaAtenciones {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.itemAtencion {
+  padding: 1.15rem 1.25rem;
+  border: 1px solid #e4e4dd;
+  border-radius: 8px;
+  background: #fcfcfa;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.atencionCabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid #efefe9;
+}
+
+.atencionFecha {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--color-tinta);
+}
+
+.atencionProfesional {
+  font-size: 0.78rem;
+  color: var(--color-tinta-suave);
+  margin-top: 0.15rem;
+}
+
+.atencionDiagnostico {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--color-tinta);
+  margin: 0;
+}
+
+.atencionBloque {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.atencionEtiqueta {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b7b80;
+}
+
+.atencionTexto {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--color-tinta);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+/* ---- Modal de Confirmación de Descarte ---- */
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(15, 23, 42, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modalDialogo {
+  width: 100%;
+  max-width: 28rem;
+  background: #ffffff;
+  border: 1px solid #e4e4dd;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.modalTitulo {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--color-tinta);
+  margin: 0;
+}
+
+.modalTexto {
+  font-size: 0.92rem;
+  color: var(--color-tinta-suave);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.modalAcciones {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
