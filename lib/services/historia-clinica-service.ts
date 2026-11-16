@@ -6,11 +6,16 @@ import {
   TIPOS_DIAGNOSTICO_VALIDOS,
   ETIQUETAS_TIPO_DIAGNOSTICO,
   OPCIONES_TIPO_DIAGNOSTICO,
+  TEXTO_DNI_NO_ENCONTRADO,
+  TEXTO_PACIENTE_SIN_REGISTROS_CLINICOS,
   HistoriaClinicaError,
   esTipoDiagnosticoValido,
   validarCargaAtencionMedica,
   construirMensajeExitoAtencion,
   filtrarPacientesPorTermino,
+  sanearDniBusqueda,
+  esDniValido,
+  validarDniBusqueda,
 } from '@/lib/utils/historia-clinica-utils'
 
 export {
@@ -19,11 +24,16 @@ export {
   TIPOS_DIAGNOSTICO_VALIDOS,
   ETIQUETAS_TIPO_DIAGNOSTICO,
   OPCIONES_TIPO_DIAGNOSTICO,
+  TEXTO_DNI_NO_ENCONTRADO,
+  TEXTO_PACIENTE_SIN_REGISTROS_CLINICOS,
   HistoriaClinicaError,
   esTipoDiagnosticoValido,
   validarCargaAtencionMedica,
   construirMensajeExitoAtencion,
   filtrarPacientesPorTermino,
+  sanearDniBusqueda,
+  esDniValido,
+  validarDniBusqueda,
 }
 
 export interface PacienteFichaDTO {
@@ -136,6 +146,63 @@ export async function buscarPacientesFichaClinica(
   }))
 
   return filtrarPacientesPorTermino(mapeados, busqueda)
+}
+
+/**
+ * Busca un paciente registrado exclusivamente por su DNI saneado y validado (US-17, RF-17.1 & RF-17.2).
+ * - Si el formato del DNI es inválido (no numérico o fuera de 7 a 8 dígitos), lanza 400 Bad Request antes de consultar la BD.
+ * - Si el DNI tiene formato válido pero no existe ningún registro en la tabla Paciente, lanza 404 Not Found.
+ */
+export async function buscarPacientePorDni(dniInput: unknown): Promise<PacienteFichaDTO> {
+  const dniLimpio = validarDniBusqueda(dniInput)
+
+  const paciente = await prisma.paciente.findUnique({
+    where: { dni: dniLimpio },
+    include: {
+      _count: {
+        select: { atenciones: true },
+      },
+    },
+  })
+
+  if (!paciente) {
+    throw new HistoriaClinicaError(TEXTO_DNI_NO_ENCONTRADO, 404)
+  }
+
+  return {
+    idPaciente: paciente.idPaciente,
+    nombre: paciente.nombre,
+    apellido: paciente.apellido,
+    dni: paciente.dni,
+    email: paciente.email,
+    telefono: paciente.telefono,
+    obraSocial: paciente.obraSocial,
+    numeroAfiliado: paciente.numeroAfiliado,
+    plan: paciente.plan,
+    cantidadAtenciones: paciente._count.atenciones,
+  }
+}
+
+/**
+ * Obtiene el detalle completo de la ficha clínica de un paciente para US-17:
+ * datos filiatorios + historial de diagnósticos y tratamientos registrados previamente mediante US-38.
+ * Si el paciente no tiene registros clínicos previos, abre la ficha con el indicador y mensaje explícito.
+ */
+export async function obtenerDetalleFichaPaciente(idPaciente: string): Promise<{
+  paciente: PacienteFichaDTO
+  atenciones: AtencionMedicaDTO[]
+  sinRegistrosClinicos: boolean
+  mensajeHistorialVacio: string | null
+}> {
+  const { paciente, atenciones } = await obtenerFichaClinicaPaciente(idPaciente)
+  const sinRegistrosClinicos = atenciones.length === 0
+
+  return {
+    paciente,
+    atenciones,
+    sinRegistrosClinicos,
+    mensajeHistorialVacio: sinRegistrosClinicos ? TEXTO_PACIENTE_SIN_REGISTROS_CLINICOS : null,
+  }
 }
 
 /**

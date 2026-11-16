@@ -191,3 +191,159 @@ export function clasificarStockVacunas(
     .map((v) => ({ ...v, stockBajo: v.stock < v.umbralAlerta }))
     .sort((a, b) => a.stock - b.stock || a.nombre.localeCompare(b.nombre, 'es'))
 }
+
+// ---------- US-40: Reporte de cantidad de turnos por especialidad ----------
+
+export const ESPECIALIDADES_MEDICAS_REPORTE = [
+  'CLINICA_MEDICA',
+  'PEDIATRIA',
+  'TRAUMATOLOGIA_ORTOPEDIA',
+] as const
+
+export type EspecialidadMedicaReporte = (typeof ESPECIALIDADES_MEDICAS_REPORTE)[number]
+
+export const ETIQUETAS_ESPECIALIDAD_REPORTE: Record<string, string> = {
+  CLINICA_MEDICA: 'Clínica Médica',
+  PEDIATRIA: 'Pediatría',
+  TRAUMATOLOGIA_ORTOPEDIA: 'Traumatología y Ortopedia',
+}
+
+export const TEXTO_RANGO_FECHAS_INVERTIDO =
+  'La fecha desde no puede ser posterior a la fecha hasta'
+
+export const TEXTO_SIN_TURNOS_PERIODO =
+  'No se encontraron turnos para el período seleccionado'
+
+export class ReporteTurnosEspecialidadError extends Error {
+  readonly statusCode: number
+
+  constructor(message: string, statusCode: number = 400) {
+    super(message)
+    this.name = 'ReporteTurnosEspecialidadError'
+    this.statusCode = statusCode
+  }
+}
+
+export interface RangoFechasValidadoUS40 {
+  fechaDesde: string
+  fechaHasta: string
+  desdeDate: Date
+  hastaDate: Date
+}
+
+/**
+ * Valida las fechas `fechaDesde` y `fechaHasta` para el reporte US-40 (RF-40.1 & RF-40.2).
+ * Ambas son obligatorias, en formato estricto YYYY-MM-DD, normalizadas a medianoche UTC
+ * para aislar de desplazamientos por huso horario UTC-3, y verificando fechaDesde <= fechaHasta.
+ */
+export function validarRangoFechasTurnosEspecialidad(
+  fechaDesdeInput: unknown,
+  fechaHastaInput: unknown
+): RangoFechasValidadoUS40 {
+  const desdeStr = typeof fechaDesdeInput === 'string' ? fechaDesdeInput.trim() : ''
+  const hastaStr = typeof fechaHastaInput === 'string' ? fechaHastaInput.trim() : ''
+
+  if (!desdeStr || !hastaStr) {
+    throw new ReporteTurnosEspecialidadError(
+      'Las fechas desde y hasta son obligatorias para generar el reporte.',
+      400
+    )
+  }
+
+  const desdeDate = parseFechaFiltro(desdeStr)
+  const hastaDate = parseFechaFiltro(hastaStr)
+
+  if (!desdeDate || !hastaDate) {
+    throw new ReporteTurnosEspecialidadError(
+      'El formato de fecha es inválido. Debe utilizarse el formato YYYY-MM-DD.',
+      400
+    )
+  }
+
+  if (desdeDate.getTime() > hastaDate.getTime()) {
+    throw new ReporteTurnosEspecialidadError(TEXTO_RANGO_FECHAS_INVERTIDO, 400)
+  }
+
+  return {
+    fechaDesde: desdeStr,
+    fechaHasta: hastaStr,
+    desdeDate,
+    hastaDate,
+  }
+}
+
+/**
+ * Calcula el porcentaje de participación redondeado a 2 decimales (RF-40.2).
+ * Retorna 0 cuando el total general es 0.
+ */
+export function calcularPorcentajeEspecialidad(cantidad: number, totalGeneral: number): number {
+  if (totalGeneral <= 0 || cantidad <= 0) return 0
+  return Math.round((cantidad / totalGeneral) * 10000) / 100
+}
+
+export interface ItemTurnoPorEspecialidadDTO {
+  especialidad: string
+  nombre: string
+  cantidad: number
+  total: number
+  porcentaje: number
+  porEstado: Record<EstadoTurnoReporte, number>
+}
+
+export interface ReporteTurnosPorEspecialidadDTO {
+  rango: {
+    fechaDesde: string
+    fechaHasta: string
+  }
+  fechaDesde: string
+  fechaHasta: string
+  totalGeneral: number
+  sinResultados: boolean
+  mensaje: string | null
+  especialidades: ItemTurnoPorEspecialidadDTO[]
+  resultados: ItemTurnoPorEspecialidadDTO[]
+}
+
+/**
+ * Construye el reporte de cantidad de turnos por especialidad (US-40, RF-40.2).
+ * - Contabiliza exclusivamente turnos efectivos/reservados: CONFIRMADO, ATENDIDO, AUSENTE, CANCELADO.
+ * - Excluye explícitamente cupos vacíos en estado DISPONIBLE.
+ * - Incluye todas las especialidades del catálogo (mostrando 0 si alguna no tuvo turnos).
+ * - Calcula totalGeneral exacto y porcentaje de participación redondeado a 2 decimales.
+ */
+export function construirReporteTurnosPorEspecialidad(params: {
+  fechaDesde: string
+  fechaHasta: string
+  conteos: ConteoTurnos[]
+  especialidades?: readonly string[]
+}): ReporteTurnosPorEspecialidadDTO {
+  const catalogoEspecialidades = params.especialidades ?? ESPECIALIDADES_MEDICAS_REPORTE
+  const agrupados = agruparTurnosPorEspecialidad(params.conteos, catalogoEspecialidades)
+
+  const totalGeneral = agrupados.reduce((acc, item) => acc + item.total, 0)
+
+  const items: ItemTurnoPorEspecialidadDTO[] = agrupados.map((item) => ({
+    especialidad: item.especialidad,
+    nombre: ETIQUETAS_ESPECIALIDAD_REPORTE[item.especialidad] ?? item.especialidad,
+    cantidad: item.total,
+    total: item.total,
+    porcentaje: calcularPorcentajeEspecialidad(item.total, totalGeneral),
+    porEstado: { ...item.porEstado },
+  }))
+
+  const sinResultados = totalGeneral === 0
+
+  return {
+    rango: {
+      fechaDesde: params.fechaDesde,
+      fechaHasta: params.fechaHasta,
+    },
+    fechaDesde: params.fechaDesde,
+    fechaHasta: params.fechaHasta,
+    totalGeneral,
+    sinResultados,
+    mensaje: sinResultados ? TEXTO_SIN_TURNOS_PERIODO : null,
+    especialidades: items,
+    resultados: items,
+  }
+}

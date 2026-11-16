@@ -151,6 +151,55 @@ export const TEXTO_SIN_TRATAMIENTO = 'No se indicó tratamiento'
 export const TEXTO_SIN_INDICACIONES_FARMACOLOGICAS =
   'No se registraron indicaciones farmacológicas'
 
+export const TEXTO_DNI_NO_ENCONTRADO =
+  'No se encontraron pacientes con el DNI ingresado'
+
+export const TEXTO_PACIENTE_SIN_REGISTROS_CLINICOS =
+  'Este paciente aún no posee registros clínicos cargados'
+
+const REGEX_DNI_VALIDO = /^\d{7,8}$/
+
+/**
+ * Sanea el valor de DNI eliminando espacios en blanco y puntos separadores de miles.
+ */
+export function sanearDniBusqueda(valor: unknown): string {
+  if (typeof valor !== 'string') {
+    throw new HistoriaClinicaError(
+      'El DNI es obligatorio y debe contener entre 7 y 8 dígitos numéricos.',
+      400
+    )
+  }
+  return valor.trim().replace(/[\s.]/g, '')
+}
+
+/**
+ * Verifica si un DNI ya saneado cumple el formato numérico de 7 a 8 dígitos.
+ */
+export function esDniValido(dniSaneado: string): boolean {
+  return REGEX_DNI_VALIDO.test(dniSaneado)
+}
+
+/**
+ * Sanea y valida el DNI ingresado para búsqueda de pacientes (US-17).
+ * Si el formato es inválido, lanza HistoriaClinicaError (400 Bad Request) antes de consultar la BD.
+ */
+export function validarDniBusqueda(valor: unknown): string {
+  const dniLimpio = sanearDniBusqueda(valor)
+  if (!dniLimpio) {
+    throw new HistoriaClinicaError(
+      'El DNI es obligatorio para realizar la búsqueda.',
+      400
+    )
+  }
+  if (!esDniValido(dniLimpio)) {
+    throw new HistoriaClinicaError(
+      'El formato del DNI es inválido. Debe contener entre 7 y 8 dígitos numéricos.',
+      400
+    )
+  }
+  return dniLimpio
+}
+
 const MESES_ARGENTINA = [
   'enero',
   'febrero',

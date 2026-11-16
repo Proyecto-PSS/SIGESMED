@@ -5,15 +5,29 @@ import {
   agruparTurnosPorEspecialidad,
   calcularAsistencia,
   clasificarStockVacunas,
+  construirReporteTurnosPorEspecialidad,
+  ESTADOS_TURNO_REPORTE,
   limitesInstantesArgentina,
   parseFechaRango,
+  ReporteTurnosEspecialidadError,
   resumirPagos,
+  validarRangoFechasTurnosEspecialidad,
   type Asistencia,
+  type ItemTurnoPorEspecialidadDTO,
   type RangoReporte,
+  type ReporteTurnosPorEspecialidadDTO,
   type ResumenPagos,
   type StockVacuna,
   type TurnosEspecialidad,
 } from '../utils/reportes-utils'
+
+export {
+  ReporteTurnosEspecialidadError,
+  validarRangoFechasTurnosEspecialidad,
+  construirReporteTurnosPorEspecialidad,
+  type ItemTurnoPorEspecialidadDTO,
+  type ReporteTurnosPorEspecialidadDTO,
+}
 
 export interface ReporteAdministrativoDTO {
   rango: RangoReporte
@@ -31,6 +45,58 @@ export class ReportesService {
       select: { idVacuna: true, nombre: true, stock: true, umbralAlerta: true },
     })
     return clasificarStockVacunas(vacunas)
+  }
+
+  /**
+   * US-40: Genera el reporte de cantidad de turnos agrupados por especialidad médica
+   * dentro de un rango de fechas [fechaDesde, fechaHasta] inclusive.
+   * Excluye explícitamente cupos vacíos en estado DISPONIBLE y contabiliza turnos efectivos/reservados
+   * (CONFIRMADO, ATENDIDO, AUSENTE, CANCELADO).
+   */
+  static async obtenerTurnosPorEspecialidad(
+    fechaDesdeInput: unknown,
+    fechaHastaInput: unknown
+  ): Promise<ReporteTurnosPorEspecialidadDTO> {
+    const rangoValidado = validarRangoFechasTurnosEspecialidad(
+      fechaDesdeInput,
+      fechaHastaInput
+    )
+
+    const [conteosPorMedico, medicos] = await Promise.all([
+      prisma.turno.groupBy({
+        by: ['idMedico', 'estado'],
+        where: {
+          fecha: {
+            gte: rangoValidado.desdeDate,
+            lte: rangoValidado.hastaDate,
+          },
+          estado: {
+            in: [...ESTADOS_TURNO_REPORTE],
+          },
+        },
+        _count: { _all: true },
+      }),
+      prisma.medico.findMany({
+        select: { idMedico: true, especialidad: true },
+      }),
+    ])
+
+    const especialidadPorMedico = new Map(
+      medicos.map((m) => [m.idMedico, m.especialidad])
+    )
+
+    const conteos = conteosPorMedico.map((c) => ({
+      especialidad: especialidadPorMedico.get(c.idMedico) ?? 'SIN_ESPECIALIDAD',
+      estado: c.estado,
+      cantidad: c._count._all,
+    }))
+
+    return construirReporteTurnosPorEspecialidad({
+      fechaDesde: rangoValidado.fechaDesde,
+      fechaHasta: rangoValidado.fechaHasta,
+      conteos,
+      especialidades: Object.values(EspecialidadMedica),
+    })
   }
 
   /**
@@ -83,4 +149,11 @@ export class ReportesService {
       vacunas: clasificarStockVacunas(vacunas),
     }
   }
+}
+
+export async function obtenerReporteTurnosPorEspecialidad(
+  fechaDesde: unknown,
+  fechaHasta: unknown
+): Promise<ReporteTurnosPorEspecialidadDTO> {
+  return ReportesService.obtenerTurnosPorEspecialidad(fechaDesde, fechaHasta)
 }

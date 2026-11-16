@@ -312,7 +312,7 @@ export default function GestionFichasClinicas({
             </div>
           ) : pacientesFiltrados.length === 0 ? (
             <div className={ui.vacio} style={{ marginTop: '1.25rem' }}>
-              No se encontraron pacientes para &ldquo;{busqueda.trim()}&rdquo;.
+              No se encontraron pacientes con el DNI ingresado (&ldquo;{busqueda.trim()}&rdquo;).
             </div>
           ) : (
             <ul className={styles.grillaPacientes} aria-label="Pacientes disponibles">
@@ -541,8 +541,7 @@ export default function GestionFichasClinicas({
                 <div className={ui.vacio}>Cargando historial clínico...</div>
               ) : atenciones.length === 0 ? (
                 <div className={ui.vacio}>
-                  Todavía no hay atenciones médicas registradas en la historia clínica de este
-                  paciente.
+                  Este paciente aún no posee registros clínicos cargados.
                 </div>
               ) : (
                 <ul className={styles.listaAtenciones} aria-label="Registros de historia clínica">
