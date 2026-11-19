@@ -192,7 +192,6 @@ export default function InventarioVacunas({ vacunas, hoy, vacunaRegistrada }: Pr
                   <th>Lote y vencimiento</th>
                   <th>Stock disponible</th>
                   <th>Nivel</th>
-                  <th>Estado de alerta</th>
                   <th className={styles.columnaAccion}>Acción</th>
                 </tr>
               </thead>
@@ -313,19 +312,6 @@ function FilaVacuna({
           </span>
           <span className={styles.nivelTexto}>{nivel.etiqueta}</span>
         </div>
-      </td>
-      <td>
-        {tieneAlerta ? (
-          <span className={`${styles.badgeAlerta} ${styles.badgeAlertaEnviada}`}>
-            <span aria-hidden="true">✓</span> Alerta enviada
-          </span>
-        ) : esStockBajo ? (
-          <span className={`${styles.badgeAlerta} ${styles.badgeSinEmitir}`}>
-            <span aria-hidden="true">!</span> Sin emitir
-          </span>
-        ) : (
-          <span className={styles.badgeNormal}>— Normal</span>
-        )}
       </td>
       <td className={styles.columnaAccion}>
         <div className={styles.grupoAcciones}>
