@@ -45,6 +45,7 @@ function aFilaInventario(vacuna: VacunaInventario, hoy: string) {
     nivel: nivelStock(vacuna.stockDisponible, vacuna.umbralAlerta),
     lote: loteVigente(vacuna.lotes),
     porVencer: proximoAVencer(vacuna.lotes, hoy),
+    alertaActiva: vacuna.alertaActiva,
   }
 }
 
@@ -60,6 +61,8 @@ export default function InventarioVacunas({ vacunas, hoy, vacunaRegistrada }: Pr
   const [busqueda, setBusqueda] = useState('')
   const [filtro, setFiltro] = useState<FiltroInventario>('TODOS')
   const [vacunaAEditar, setVacunaAEditar] = useState<FilaInventario | null>(null)
+  const [alertaEnviandoId, setAlertaEnviandoId] = useState<string | null>(null)
+  const [mensajeError, setMensajeError] = useState<string | null>(null)
   const [mensaje, setMensaje] = useState<string | null>(
     vacunaRegistrada ? `Vacuna "${vacunaRegistrada}" registrada con éxito en el inventario.` : null
   )
@@ -79,6 +82,26 @@ export default function InventarioVacunas({ vacunas, hoy, vacunaRegistrada }: Pr
     router.refresh()
   }
 
+  const handleCrearAlerta = async (fila: FilaInventario) => {
+    setAlertaEnviandoId(fila.idVacuna)
+    setMensajeError(null)
+    try {
+      const res = await fetch(`/api/enfermeria/vacunas/${encodeURIComponent(fila.idVacuna)}/alerta`, {
+        method: 'POST',
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data.error || 'No se pudo emitir la alerta de stock.')
+      }
+      setMensaje(data.mensaje || `Alerta de stock emitida exitosamente para ${fila.nombre} (Notificación enviada a Administración).`)
+      router.refresh()
+    } catch (err: any) {
+      setMensajeError(err.message || 'Error al emitir la alerta de stock.')
+    } finally {
+      setAlertaEnviandoId(null)
+    }
+  }
+
   const limpiarFiltros = () => {
     setBusqueda('')
     setFiltro('TODOS')
@@ -88,9 +111,9 @@ export default function InventarioVacunas({ vacunas, hoy, vacunaRegistrada }: Pr
     <main className={ui.pagina}>
       <header className={styles.encabezado}>
         <div>
-          <span className={styles.eyebrow}>Vacunatorio</span>
-          <h1 className={ui.titulo}>Inventario de vacunas</h1>
-          <p className={ui.subtitulo}>Consultá el stock disponible, los lotes y los vencimientos de cada vacuna.</p>
+          <span className={styles.eyebrow}>Vacunatorio // Control de Stock</span>
+          <h1 className={ui.titulo}>Control de stock y alertas de vacunas</h1>
+          <p className={ui.subtitulo}>Consultá el stock disponible, gestioná alertas críticas y actualizá existencias.</p>
         </div>
         <Link href="/dashboard/enfermero/inventario/nueva" className={ui.botonPrimario}>
           <span aria-hidden="true">+</span> Registrar vacuna
@@ -101,6 +124,15 @@ export default function InventarioVacunas({ vacunas, hoy, vacunaRegistrada }: Pr
         <div className={`${ui.alerta} ${ui.alertaExito} ${styles.aviso}`} role="status">
           <span>✓ {mensaje}</span>
           <button type="button" className={styles.cerrarAviso} onClick={cerrarMensaje} aria-label="Cerrar aviso">
+            ✕
+          </button>
+        </div>
+      )}
+
+      {mensajeError && (
+        <div className={`${ui.alerta} ${ui.alertaError} ${styles.aviso}`} role="alert">
+          <span>⚠ {mensajeError}</span>
+          <button type="button" className={styles.cerrarAviso} onClick={() => setMensajeError(null)} aria-label="Cerrar error">
             ✕
           </button>
         </div>
@@ -160,12 +192,20 @@ export default function InventarioVacunas({ vacunas, hoy, vacunaRegistrada }: Pr
                   <th>Lote y vencimiento</th>
                   <th>Stock disponible</th>
                   <th>Nivel</th>
+                  <th>Estado de alerta</th>
                   <th className={styles.columnaAccion}>Acción</th>
                 </tr>
               </thead>
               <tbody>
                 {visibles.map((fila) => (
-                  <FilaVacuna key={fila.idVacuna} fila={fila} hoy={hoy} onActualizar={() => setVacunaAEditar(fila)} />
+                  <FilaVacuna
+                    key={fila.idVacuna}
+                    fila={fila}
+                    hoy={hoy}
+                    alertaEnviando={alertaEnviandoId === fila.idVacuna}
+                    onCrearAlerta={() => handleCrearAlerta(fila)}
+                    onActualizar={() => setVacunaAEditar(fila)}
+                  />
                 ))}
               </tbody>
             </table>
@@ -216,10 +256,24 @@ function Resumen({ filas, contadores }: { filas: FilaInventario[]; contadores: R
   )
 }
 
-function FilaVacuna({ fila, hoy, onActualizar }: { fila: FilaInventario; hoy: string; onActualizar: () => void }) {
+function FilaVacuna({
+  fila,
+  hoy,
+  alertaEnviando,
+  onCrearAlerta,
+  onActualizar,
+}: {
+  fila: FilaInventario
+  hoy: string
+  alertaEnviando: boolean
+  onCrearAlerta: () => void
+  onActualizar: () => void
+}) {
   const nivel = NIVELES[fila.nivel]
   const detalle = [fila.laboratorio, fila.presentacion].filter(Boolean).join(' · ')
   const vencido = fila.lote?.vencimiento ? diasHastaVencimiento(fila.lote.vencimiento, hoy) < 0 : false
+  const esStockBajo = fila.stock < fila.umbralAlerta
+  const tieneAlerta = Boolean(fila.alertaActiva)
 
   return (
     <tr className={fila.nivel !== 'NORMAL' ? styles[`fila${fila.nivel}`] : undefined}>
@@ -260,10 +314,46 @@ function FilaVacuna({ fila, hoy, onActualizar }: { fila: FilaInventario; hoy: st
           <span className={styles.nivelTexto}>{nivel.etiqueta}</span>
         </div>
       </td>
+      <td>
+        {tieneAlerta ? (
+          <span className={`${styles.badgeAlerta} ${styles.badgeAlertaEnviada}`}>
+            <span aria-hidden="true">✓</span> Alerta enviada
+          </span>
+        ) : esStockBajo ? (
+          <span className={`${styles.badgeAlerta} ${styles.badgeSinEmitir}`}>
+            <span aria-hidden="true">!</span> Sin emitir
+          </span>
+        ) : (
+          <span className={styles.badgeNormal}>— Normal</span>
+        )}
+      </td>
       <td className={styles.columnaAccion}>
-        <button type="button" className={`${ui.botonSecundario} ${ui.botonChico}`} onClick={onActualizar}>
-          Actualizar stock
-        </button>
+        <div className={styles.grupoAcciones}>
+          {esStockBajo && (
+            tieneAlerta ? (
+              <button
+                type="button"
+                disabled
+                className={styles.botonAlertaBloqueado}
+                title="Ya existe una alerta enviada a Administración para esta vacuna"
+              >
+                Alerta enviada
+              </button>
+            ) : (
+              <button
+                type="button"
+                className={styles.botonCrearAlerta}
+                disabled={alertaEnviando}
+                onClick={onCrearAlerta}
+              >
+                {alertaEnviando ? 'Enviando…' : 'Crear alerta'}
+              </button>
+            )
+          )}
+          <button type="button" className={`${ui.botonSecundario} ${ui.botonChico}`} onClick={onActualizar}>
+            Actualizar stock
+          </button>
+        </div>
       </td>
     </tr>
   )

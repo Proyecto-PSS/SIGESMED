@@ -218,6 +218,7 @@ model Vacuna {
   turnos      TurnoVacunacion[]
   lotes       LoteVacuna[]
   movimientos MovimientoStockVacuna[]
+  alertas     AlertaStockVacuna[]
 
   @@map("vacunas")
 }
@@ -301,6 +302,29 @@ model CancelacionTurnoVacunacion {
   @@index([idPaciente, canceladoAt])
   @@index([idTurnoVacunacion, canceladoAt])
   @@map("cancelaciones_turnos_vacunacion")
+}
+
+enum EstadoAlertaStock {
+  PENDIENTE
+  RESUELTA
+  CANCELADA
+}
+
+// US-34: registro y control de alertas emitidas por stock bajo de vacunas.
+model AlertaStockVacuna {
+  idAlerta        String            @id @default(cuid()) @map("id_alerta")
+  idVacuna        String            @map("id_vacuna")
+  idEnfermero     String?           @map("id_enfermero")
+  estado          EstadoAlertaStock @default(PENDIENTE)
+  stockAlMomento  Int               @map("stock_al_momento")
+  umbralAlMomento Int               @map("umbral_al_momento")
+  enviadaAt       DateTime          @default(now()) @map("enviada_at") @db.Timestamptz(3)
+  resueltaAt      DateTime?         @map("resuelta_at") @db.Timestamptz(3)
+
+  vacuna          Vacuna            @relation(fields: [idVacuna], references: [idVacuna], onDelete: Cascade)
+
+  @@index([idVacuna, estado])
+  @@map("alertas_stock_vacunas")
 }
 
 model RecordatorioTurno {

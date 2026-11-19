@@ -111,6 +111,11 @@ export class VacunacionService {
           where: { estado: 'CONFIRMADO' },
           select: { idTurnoVacunacion: true },
         },
+        alertas: {
+          where: { estado: 'PENDIENTE' },
+          orderBy: { enviadaAt: 'desc' },
+          take: 1,
+        },
       },
       orderBy: { nombre: 'asc' },
     })
@@ -124,6 +129,13 @@ export class VacunacionService {
       umbralAlerta: v.umbralAlerta,
       stockDisponible: v.stock,
       turnosComprometidos: v.turnos.length,
+      alertaActiva: v.alertas && v.alertas.length > 0
+        ? {
+            idAlerta: v.alertas[0].idAlerta,
+            estado: v.alertas[0].estado,
+            enviadaAt: v.alertas[0].enviadaAt.toISOString(),
+          }
+        : null,
       lotes: v.lotes.map((l) => ({
         idLote: l.idLote,
         numeroLote: l.numeroLote,
@@ -250,7 +262,65 @@ export class VacunacionService {
         },
       })
 
+      // Si el nuevo stock supera el umbral, se resuelven las alertas pendientes de esta vacuna.
+      if (stockNuevo >= vacuna.umbralAlerta) {
+        await tx.alertaStockVacuna.updateMany({
+          where: { idVacuna, estado: 'PENDIENTE' },
+          data: { estado: 'RESUELTA', resueltaAt: new Date() },
+        })
+      }
+
       return { vacuna: { ...vacuna, stock: stockNuevo }, sinCambios: false }
+    })
+  }
+
+  /**
+   * US-34: emisión de alerta de stock bajo para una vacuna cuando su stock actual es menor al umbral.
+   * Notifica a Administración y previene la emisión de alertas duplicadas si ya existe una alerta activa/pendiente.
+   */
+  static async emitirAlertaStock(idVacuna: string, idEnfermero?: string) {
+    return prisma.$transaction(async (tx) => {
+      const vacuna = await tx.vacuna.findUnique({
+        where: { idVacuna },
+        include: {
+          alertas: {
+            where: { estado: 'PENDIENTE' },
+            take: 1,
+          },
+        },
+      })
+
+      if (!vacuna) {
+        throw errorConEstado('La vacuna indicada no existe.', 404, 'VACCINE_NOT_FOUND')
+      }
+
+      if (vacuna.stock >= vacuna.umbralAlerta) {
+        throw errorConEstado(
+          `No es posible emitir la alerta: el stock actual (${vacuna.stock} dosis) no es menor al umbral de alerta (${vacuna.umbralAlerta} dosis).`,
+          400,
+          'STOCK_NOT_CRITICAL'
+        )
+      }
+
+      if (vacuna.alertas.length > 0) {
+        throw errorConEstado(
+          'Ya existe una alerta enviada para esta vacuna.',
+          409,
+          'ALERT_ALREADY_EXISTS'
+        )
+      }
+
+      const alerta = await tx.alertaStockVacuna.create({
+        data: {
+          idVacuna: vacuna.idVacuna,
+          idEnfermero,
+          estado: 'PENDIENTE',
+          stockAlMomento: vacuna.stock,
+          umbralAlMomento: vacuna.umbralAlerta,
+        },
+      })
+
+      return { alerta, vacuna }
     })
   }
 

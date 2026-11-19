@@ -249,6 +249,82 @@
   text-align: right;
 }
 
+.grupoAcciones {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.badgeAlerta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badgeAlertaEnviada {
+  background: #e6f7ef;
+  color: #0d6832;
+  border: 1px solid #b7ebd0;
+}
+
+.badgeSinEmitir {
+  background: #fff3ed;
+  color: #b42318;
+  border: 1px solid #fecdca;
+}
+
+.badgeNormal {
+  color: #6b7b80;
+  font-size: 12px;
+}
+
+.botonCrearAlerta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border: 1px solid #0f172a;
+  border-radius: 8px;
+  background: #0f172a;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.botonCrearAlerta:hover:not(:disabled) {
+  background: #1e293b;
+  border-color: #1e293b;
+}
+
+.botonCrearAlerta:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.botonAlertaBloqueado {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: not-allowed;
+  white-space: nowrap;
+}
+
 .vacunaNombre {
   display: block;
   color: var(--color-tinta);
