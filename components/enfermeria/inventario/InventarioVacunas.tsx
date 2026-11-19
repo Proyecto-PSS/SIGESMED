@@ -334,7 +334,7 @@ function FilaVacuna({
               <button
                 type="button"
                 disabled
-                className={styles.botonAlertaBloqueado}
+                className={`${styles.botonAccion} ${styles.botonAlertaBloqueado}`}
                 title="Ya existe una alerta enviada a Administración para esta vacuna"
               >
                 Alerta enviada
@@ -342,7 +342,7 @@ function FilaVacuna({
             ) : (
               <button
                 type="button"
-                className={styles.botonCrearAlerta}
+                className={`${styles.botonAccion} ${styles.botonCrearAlerta}`}
                 disabled={alertaEnviando}
                 onClick={onCrearAlerta}
               >
@@ -350,7 +350,11 @@ function FilaVacuna({
               </button>
             )
           )}
-          <button type="button" className={`${ui.botonSecundario} ${ui.botonChico}`} onClick={onActualizar}>
+          <button
+            type="button"
+            className={`${styles.botonAccion} ${styles.botonActualizar}`}
+            onClick={onActualizar}
+          >
             Actualizar stock
           </button>
         </div>
