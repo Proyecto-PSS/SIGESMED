@@ -12,6 +12,7 @@ export default async function EnfermeroLayout({ children }: { children: React.Re
       inicio={BASE}
       secciones={[
         { href: BASE, label: 'Turnos en sala', exacto: true },
+        { href: `${BASE}/dias-horarios`, label: 'Gestión de días y horarios' },
         { href: `${BASE}/inventario`, label: 'Control de stock' },
         { href: `${BASE}/reportes`, label: 'Reportes' },
       ]}
