@@ -1,0 +1,57 @@
+.totalDestacado {
+  background: #f3f8f8;
+  border-left-color: #165a64;
+}
+
+.totalDestacado span:nth-child(2) {
+  color: #165a64;
+}
+
+/*
+ * Tabla de pagos: 6 columnas con datos agrupados en dos líneas para que entre completa sin scroll
+ * horizontal. Fechas e importes nunca se cortan; los textos largos se acomodan en varias líneas.
+ */
+.tablaPagos th,
+.tablaPagos td {
+  padding: 0.75rem 0.85rem;
+  vertical-align: top;
+  overflow-wrap: break-word;
+}
+
+.tablaPagos thead th {
+  vertical-align: bottom;
+  letter-spacing: 0.02em;
+}
+
+.sinCorte {
+  white-space: nowrap;
+}
+
+.principal {
+  display: block;
+  color: #173039;
+}
+
+.secundario {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.8rem;
+  color: #63767b;
+}
+
+.comprobante {
+  font-size: 0.82rem;
+  letter-spacing: 0.01em;
+}
+
+.importe {
+  white-space: nowrap;
+  font-weight: 700;
+  color: #173039;
+}
+
+@media (max-width: 640px) {
+  .tablaPagos {
+    min-width: 640px;
+  }
+}
