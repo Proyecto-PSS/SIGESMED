@@ -20,6 +20,13 @@ import {
   type StockVacuna,
   type TurnosEspecialidad,
 } from '../utils/reportes-utils'
+import {
+  construirFiltroPagosRealizados,
+  construirReportePagosRealizados,
+  ReportePagosRealizadosError,
+  validarRangoFechasPagos,
+  type ReportePagosRealizadosDTO,
+} from '../utils/reportes-pagos-utils'
 
 export {
   ReporteTurnosEspecialidadError,
@@ -96,6 +103,67 @@ export class ReportesService {
       fechaHasta: rangoValidado.fechaHasta,
       conteos,
       especialidades: Object.values(EspecialidadMedica),
+    })
+  }
+
+  /**
+   * US-42: Pagos exitosos (APROBADO) cuya fecha de aprobación cae en [fechaDesde, fechaHasta]
+   * (días completos en hora argentina) y la sumatoria de sus importes.
+   * El detalle y el total (`aggregate` con `_sum`) se obtienen con el mismo filtro dentro de una
+   * única transacción REPEATABLE READ, así ambos ven la misma foto de la base de datos.
+   * Los importes `Decimal` se serializan a texto sin pasar por punto flotante.
+   */
+  static async obtenerPagosRealizados(
+    fechaDesdeInput: unknown,
+    fechaHastaInput: unknown
+  ): Promise<ReportePagosRealizadosDTO> {
+    const rango = validarRangoFechasPagos(fechaDesdeInput, fechaHastaInput)
+    if (!rango.ok) throw new ReportePagosRealizadosError(rango.error, 400, rango.code)
+
+    const where = construirFiltroPagosRealizados(rango.fechaDesde, rango.fechaHasta)
+
+    const [pagos, agregado] = await prisma.$transaction(
+      [
+        prisma.pagoTurno.findMany({
+          where,
+          orderBy: [{ aprobadoAt: 'asc' }, { idPago: 'asc' }],
+          select: {
+            idPago: true,
+            monto: true,
+            moneda: true,
+            proveedor: true,
+            aprobadoAt: true,
+            paciente: { select: { nombre: true, apellido: true } },
+            turno: {
+              select: {
+                fecha: true,
+                hora: true,
+                medico: { select: { nombre: true, apellido: true, especialidad: true } },
+              },
+            },
+            comprobante: { select: { numeroComprobante: true } },
+          },
+        }),
+        prisma.pagoTurno.aggregate({
+          where,
+          _sum: { monto: true },
+          _count: { _all: true },
+        }),
+      ],
+      { isolationLevel: 'RepeatableRead' }
+    )
+
+    return construirReportePagosRealizados({
+      fechaDesde: rango.fechaDesde,
+      fechaHasta: rango.fechaHasta,
+      registros: pagos.map((pago) => ({
+        ...pago,
+        monto: pago.monto.toFixed(2),
+        // El filtro exige aprobadoAt dentro del rango, por lo que nunca es null aquí.
+        aprobadoAt: pago.aprobadoAt as Date,
+      })),
+      totalAgregado: agregado._sum.monto ? agregado._sum.monto.toFixed(2) : null,
+      cantidadAgregada: agregado._count._all,
     })
   }
 
