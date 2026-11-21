@@ -27,6 +27,12 @@ import {
   validarRangoFechasPagos,
   type ReportePagosRealizadosDTO,
 } from '../utils/reportes-pagos-utils'
+import {
+  construirReporteAsistencia,
+  ESTADOS_CONSULTADOS_ASISTENCIA,
+  validarRangoFechasAsistencia,
+  type ReporteAsistenciaDTO,
+} from '../utils/reportes-asistencia-utils'
 
 export {
   ReporteTurnosEspecialidadError,
@@ -164,6 +170,37 @@ export class ReportesService {
       })),
       totalAgregado: agregado._sum.monto ? agregado._sum.monto.toFixed(2) : null,
       cantidadAgregada: agregado._count._all,
+    })
+  }
+
+  /**
+   * US-43: Métricas históricas de asistencia de pacientes en [fechaDesde, fechaHasta] inclusive.
+   * Se filtra por la fecha programada del turno (`fecha`, columna DATE sin hora: no hay
+   * desplazamiento por zona horaria) y solo turnos con paciente asignado. El conteo por estado
+   * se agrupa en la base de datos; la clasificación y los porcentajes los calcula
+   * `construirReporteAsistencia` (CONFIRMADO queda fuera de las métricas y del denominador).
+   */
+  static async obtenerAsistenciaPacientes(
+    fechaDesdeInput: unknown,
+    fechaHastaInput: unknown
+  ): Promise<ReporteAsistenciaDTO> {
+    const rango = validarRangoFechasAsistencia(fechaDesdeInput, fechaHastaInput)
+    if (!rango.ok) throw Object.assign(new Error(rango.error), { statusCode: 400, code: rango.code })
+
+    const conteos = await prisma.turno.groupBy({
+      by: ['estado'],
+      where: {
+        fecha: { gte: parseFechaRango(rango.fechaDesde), lte: parseFechaRango(rango.fechaHasta) },
+        idPaciente: { not: null },
+        estado: { in: [...ESTADOS_CONSULTADOS_ASISTENCIA] },
+      },
+      _count: { _all: true },
+    })
+
+    return construirReporteAsistencia({
+      fechaDesde: rango.fechaDesde,
+      fechaHasta: rango.fechaHasta,
+      conteos: conteos.map((c) => ({ estado: c.estado, cantidad: c._count._all })),
     })
   }
 

@@ -23,6 +23,18 @@ export default function MenuReportes({ href }: { href: string }) {
           </Link>
         )}
         {esAdmin && (
+          <Link className={styles.opcion} href={`${href}/asistencia`}>
+            <span className={styles.icono} aria-hidden="true">✓</span>
+            <span>
+              <strong>Asistencia</strong>
+              <span className={styles.detalle}>
+                Porcentaje de turnos atendidos, ausentes y cancelados según rango de fechas.
+              </span>
+            </span>
+            <span className={styles.flecha} aria-hidden="true">→</span>
+          </Link>
+        )}
+        {esAdmin && (
           <Link className={styles.opcion} href={`${href}/pagos-realizados`}>
             <span className={styles.icono} aria-hidden="true">$</span>
             <span>
