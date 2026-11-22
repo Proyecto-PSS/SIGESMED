@@ -13,6 +13,7 @@ import {
   TEXTO_SIN_INDICACIONES_FARMACOLOGICAS,
   formatearFechaHoraAtencionArgentina,
 } from '../lib/utils/historia-clinica-utils.ts'
+import { nombreEspecialidadMedica } from '../lib/utils/especialidades-medicas.ts'
 
 function test(nombre: string, run: () => void | Promise<void>) {
   return Promise.resolve()
@@ -67,12 +68,6 @@ interface BaseDatosEnMemoria {
   lecturasEjecutadas: number
   escriturasEjecutadas: number
   simularCaidaBaseDeDatos: boolean
-}
-
-const NOMBRES_ESPECIALIDADES: Record<string, string> = {
-  CLINICA_MEDICA: 'Clínica Médica',
-  PEDIATRIA: 'Pediatría',
-  TRAUMATOLOGIA_ORTOPEDIA: 'Traumatología y Ortopedia',
 }
 
 function crearBaseDatos(): BaseDatosEnMemoria {
@@ -238,8 +233,7 @@ function consultarHistorialClinicoPacienteEndpoint(
             apellido: medico.apellido,
             nombreCompleto: `${medico.nombre} ${medico.apellido}`,
             especialidad: medico.especialidad,
-            especialidadEtiqueta:
-              NOMBRES_ESPECIALIDADES[medico.especialidad] ?? medico.especialidad,
+            especialidadEtiqueta: nombreEspecialidadMedica(medico.especialidad),
             matricula: medico.matricula,
           },
         }
@@ -277,11 +271,27 @@ function consultarHistorialClinicoPacienteEndpoint(
   }
 }
 
-// Representación de estado de la interfaz HistorialClinicoPaciente.tsx
+const ENCABEZADOS_VISIBLES = [
+  'Profesional:',
+  'Dr./Dra.',
+  'Diagnóstico',
+  'Diagnóstico principal',
+  'Tipo de diagnóstico',
+  'Observaciones clínicas',
+  'Tratamiento',
+  'Detalle del tratamiento',
+  'Indicaciones farmacológicas',
+]
+
 function representarVistaHistorialPaciente(respuesta: {
   status: number
   body: { ok: boolean; success: boolean; atenciones?: any[]; error?: string }
 }) {
+  const ariaLabelSeccion = 'Registros de tu historial clínico'
+  const ariaLabelLista = 'Atenciones médicas registradas en tu historial clínico'
+  const textoCarga = 'Cargando registros de tu historial clínico...'
+  const botonReintentar = 'Reintentar'
+
   if (respuesta.status !== 200 || !respuesta.body.ok) {
     return {
       estadoUI: 'error' as const,
@@ -290,6 +300,12 @@ function representarVistaHistorialPaciente(respuesta: {
       permiteReintentar: true,
       controlesEdicionOEliminacion: 0,
       tarjetasRenderizadas: [],
+      contador: null,
+      encabezadosVisibles: ENCABEZADOS_VISIBLES,
+      ariaLabelSeccion,
+      ariaLabelLista,
+      textoCarga,
+      botonReintentar,
     }
   }
 
@@ -303,6 +319,12 @@ function representarVistaHistorialPaciente(respuesta: {
       mensajeError: null,
       controlesEdicionOEliminacion: 0,
       tarjetasRenderizadas: [],
+      contador: null,
+      encabezadosVisibles: ENCABEZADOS_VISIBLES,
+      ariaLabelSeccion,
+      ariaLabelLista,
+      textoCarga,
+      botonReintentar: null,
     }
   }
 
@@ -314,7 +336,9 @@ function representarVistaHistorialPaciente(respuesta: {
     tarjetasRenderizadas: atenciones.map((a) => ({
       idAtencion: a.idAtencion,
       fechaHoraLegible: formatearFechaHoraAtencionArgentina(a.createdAt),
-      profesional: `Dr./Dra. ${a.medico.nombreCompleto}`,
+      profesional: `Dr./Dra. ${a.medico.nombreCompleto}${
+        a.medico.especialidadEtiqueta ? ` · ${a.medico.especialidadEtiqueta}` : ''
+      }`,
       especialidad: a.medico.especialidadEtiqueta,
       diagnosticoPrincipal: a.diagnosticoPrincipal,
       tipoDiagnosticoEtiqueta: a.tipoDiagnosticoEtiqueta,
@@ -324,6 +348,41 @@ function representarVistaHistorialPaciente(respuesta: {
         a.indicacionesFarmacologicas || TEXTO_SIN_INDICACIONES_FARMACOLOGICAS,
       esSoloLectura: true,
     })),
+    contador:
+      atenciones.length === 1
+        ? '1 atención registrada'
+        : `${atenciones.length} atenciones registradas`,
+    encabezadosVisibles: ENCABEZADOS_VISIBLES,
+    ariaLabelSeccion,
+    ariaLabelLista,
+    textoCarga,
+    botonReintentar: null,
+  }
+}
+
+function simularFetchHistorial(
+  respuesta: {
+    status: number
+    body: { ok: boolean; success: boolean; atenciones?: any[]; error?: string }
+  },
+  atencionesIniciales: any[] = []
+) {
+  const url = '/api/pacientes/historia-clinica'
+  const init = { method: 'GET', cache: 'no-store' }
+  const vista = representarVistaHistorialPaciente(respuesta)
+  const atenciones = Array.isArray(respuesta.body.atenciones) ? respuesta.body.atenciones : []
+
+  return {
+    url,
+    init,
+    estadoUI: vista.estadoUI,
+    mensajeError: vista.mensajeError,
+    permiteReintentar: vista.estadoUI === 'error',
+    botonReintentar: vista.estadoUI === 'error' ? 'Reintentar' : null,
+    tarjetasRenderizadas: vista.tarjetasRenderizadas,
+    contador: vista.contador,
+    atencionesIniciales: atencionesIniciales.length,
+    atencionesFinales: atenciones.length,
   }
 }
 
@@ -401,7 +460,7 @@ async function runAllTests() {
       'Naproxeno 500 mg cada 12 hs durante 5 días.'
     )
     assert.equal(item.medico.nombreCompleto, 'Martín Gómez')
-    assert.equal(item.medico.especialidadEtiqueta, 'Traumatología y Ortopedia')
+    assert.equal(item.medico.especialidadEtiqueta, 'Traumatología y ortopedia')
     assert.equal(item.createdAt, fechaAtencion.toISOString())
   })
 
@@ -699,7 +758,279 @@ async function runAllTests() {
     assert.ok(formateada.includes('12:30'))
   })
 
-  console.log('\n=== TODAS LAS PRUEBAS DE US-39 PASARON EXITOSAMENTE (13/13) ===\n')
+  await test('Esc.14: Dos pacientes con dos médicos distintos ven solo sus diagnósticos exactos, sin filtración cruzada al renderizar', () => {
+    const db = crearBaseDatos()
+
+    registrarAtencionPorMedicoUS38(
+      db,
+      SESION_MEDICO_1,
+      'pac_A',
+      { diagnosticoPrincipal: 'Fractura de radio distal izquierda', tipoDiagnostico: 'DEFINITIVO' },
+      new Date('2026-11-20T10:00:00.000Z')
+    )
+    registrarAtencionPorMedicoUS38(
+      db,
+      SESION_MEDICO_2,
+      'pac_A',
+      { diagnosticoPrincipal: 'Lumbalgia mecánica crónica', tipoDiagnostico: 'EN_ESTUDIO' },
+      new Date('2026-11-18T09:00:00.000Z')
+    )
+    registrarAtencionPorMedicoUS38(
+      db,
+      SESION_MEDICO_2,
+      'pac_B',
+      { diagnosticoPrincipal: 'Otitis media aguda bilateral', tipoDiagnostico: 'PRESUNTIVO' },
+      new Date('2026-11-19T08:00:00.000Z')
+    )
+    registrarAtencionPorMedicoUS38(
+      db,
+      SESION_MEDICO_1,
+      'pac_B',
+      { diagnosticoPrincipal: 'Dermatitis de contacto en manos', tipoDiagnostico: 'DEFINITIVO' },
+      new Date('2026-11-17T07:00:00.000Z')
+    )
+
+    const resA = consultarHistorialClinicoPacienteEndpoint(db, SESION_PACIENTE_A)
+    const resB = consultarHistorialClinicoPacienteEndpoint(db, SESION_PACIENTE_B)
+    const vistaA = representarVistaHistorialPaciente(resA)
+    const vistaB = representarVistaHistorialPaciente(resB)
+
+    assert.deepEqual(resA.body.atenciones!.map((a: any) => a.diagnosticoPrincipal), [
+      'Fractura de radio distal izquierda',
+      'Lumbalgia mecánica crónica',
+    ])
+    assert.deepEqual(resB.body.atenciones!.map((a: any) => a.diagnosticoPrincipal), [
+      'Otitis media aguda bilateral',
+      'Dermatitis de contacto en manos',
+    ])
+    assert.ok(resA.body.atenciones!.every((a: any) => a.idPaciente === 'pac_A'))
+    assert.ok(resB.body.atenciones!.every((a: any) => a.idPaciente === 'pac_B'))
+    assert.deepEqual(
+      vistaA.tarjetasRenderizadas.map((t: any) => t.diagnosticoPrincipal),
+      ['Fractura de radio distal izquierda', 'Lumbalgia mecánica crónica']
+    )
+    assert.deepEqual(
+      vistaB.tarjetasRenderizadas.map((t: any) => t.diagnosticoPrincipal),
+      ['Otitis media aguda bilateral', 'Dermatitis de contacto en manos']
+    )
+    assert.equal(vistaA.tarjetasRenderizadas[0].profesional, 'Dr./Dra. Martín Gómez · Traumatología y ortopedia')
+    assert.equal(vistaA.tarjetasRenderizadas[1].profesional, 'Dr./Dra. Juan Carlos Rossi · Clínica médica')
+    assert.equal(vistaB.tarjetasRenderizadas[0].profesional, 'Dr./Dra. Juan Carlos Rossi · Clínica médica')
+    assert.equal(vistaB.tarjetasRenderizadas[1].profesional, 'Dr./Dra. Martín Gómez · Traumatología y ortopedia')
+    assert.ok(!JSON.stringify(vistaA).includes('Otitis media aguda bilateral'))
+    assert.ok(!JSON.stringify(vistaA).includes('Dermatitis de contacto en manos'))
+    assert.ok(!JSON.stringify(vistaB).includes('Fractura de radio distal izquierda'))
+    assert.ok(!JSON.stringify(vistaB).includes('Lumbalgia mecánica crónica'))
+  })
+
+  await test('Esc.15: El renderizado replica literalmente el diagnóstico cargado por el médico, sus etiquetas, profesional, fecha y contador', () => {
+    const db = crearBaseDatos()
+
+    registrarAtencionPorMedicoUS38(
+      db,
+      SESION_MEDICO_1,
+      'pac_A',
+      {
+        diagnosticoPrincipal: 'Tendinopatía rotuliana bilateral',
+        tipoDiagnostico: 'DEFINITIVO',
+        observacionesClinicas: 'Dolor al descender escaleras, sin derrame articular.',
+        detalleTratamiento: 'Rehabilitación kinésica excéntrica 3 veces por semana.',
+        indicacionesFarmacologicas: 'Naproxeno 500 mg cada 12 hs durante 5 días.',
+      },
+      new Date('2026-03-20T14:30:00.000Z')
+    )
+
+    const res = consultarHistorialClinicoPacienteEndpoint(db, SESION_PACIENTE_A)
+    const vista = representarVistaHistorialPaciente(res)
+
+    assert.equal(vista.estadoUI, 'success')
+    assert.equal(vista.contador, '1 atención registrada')
+    assert.equal(vista.ariaLabelSeccion, 'Registros de tu historial clínico')
+    assert.equal(vista.ariaLabelLista, 'Atenciones médicas registradas en tu historial clínico')
+    assert.equal(vista.textoCarga, 'Cargando registros de tu historial clínico...')
+    assert.equal(vista.botonReintentar, null)
+    assert.deepEqual(vista.encabezadosVisibles, [
+      'Profesional:',
+      'Dr./Dra.',
+      'Diagnóstico',
+      'Diagnóstico principal',
+      'Tipo de diagnóstico',
+      'Observaciones clínicas',
+      'Tratamiento',
+      'Detalle del tratamiento',
+      'Indicaciones farmacológicas',
+    ])
+    assert.deepEqual(vista.tarjetasRenderizadas[0], {
+      idAtencion: res.body.atenciones![0].idAtencion,
+      fechaHoraLegible: '20 de marzo de 2026 · 11:30 hs',
+      profesional: 'Dr./Dra. Martín Gómez · Traumatología y ortopedia',
+      especialidad: 'Traumatología y ortopedia',
+      diagnosticoPrincipal: 'Tendinopatía rotuliana bilateral',
+      tipoDiagnosticoEtiqueta: 'Definitivo',
+      observacionesTexto: 'Dolor al descender escaleras, sin derrame articular.',
+      tratamientoTexto: 'Rehabilitación kinésica excéntrica 3 veces por semana.',
+      indicacionesTexto: 'Naproxeno 500 mg cada 12 hs durante 5 días.',
+      esSoloLectura: true,
+    })
+  })
+
+  await test('Esc.16: Las etiquetas de tipo y especialidad usan las utilidades reales, sin mayúsculas inventadas', () => {
+    assert.equal(nombreEspecialidadMedica('CLINICA_MEDICA'), 'Clínica médica')
+    assert.equal(nombreEspecialidadMedica('PEDIATRIA'), 'Pediatría')
+    assert.equal(nombreEspecialidadMedica('TRAUMATOLOGIA_ORTOPEDIA'), 'Traumatología y ortopedia')
+
+    const db = crearBaseDatos()
+    db.medicos.set('med_003', {
+      idMedico: 'med_003',
+      nombre: 'Ana',
+      apellido: 'Pérez',
+      especialidad: 'PEDIATRIA',
+      matricula: 'MN-30303',
+    })
+    const sesionMedico3: SesionMock = {
+      id: 'med_003',
+      nombre: 'Ana',
+      apellido: 'Pérez',
+      rol: 'MEDICO',
+    }
+
+    registrarAtencionPorMedicoUS38(
+      db,
+      SESION_MEDICO_1,
+      'pac_A',
+      { diagnosticoPrincipal: 'Esguince de tobillo', tipoDiagnostico: 'PRESUNTIVO' },
+      new Date('2026-11-18T09:00:00.000Z')
+    )
+    registrarAtencionPorMedicoUS38(
+      db,
+      SESION_MEDICO_2,
+      'pac_A',
+      { diagnosticoPrincipal: 'Hipertensión en evaluación', tipoDiagnostico: 'EN_ESTUDIO' },
+      new Date('2026-11-19T10:00:00.000Z')
+    )
+    registrarAtencionPorMedicoUS38(
+      db,
+      sesionMedico3,
+      'pac_A',
+      { diagnosticoPrincipal: 'Bronquiolitis aguda', tipoDiagnostico: 'DEFINITIVO' },
+      new Date('2026-11-20T11:00:00.000Z')
+    )
+
+    const res = consultarHistorialClinicoPacienteEndpoint(db, SESION_PACIENTE_A)
+    const vista = representarVistaHistorialPaciente(res)
+    assert.deepEqual(vista.tarjetasRenderizadas.map((t: any) => t.tipoDiagnosticoEtiqueta), [
+      'Definitivo',
+      'En estudio',
+      'Presuntivo',
+    ])
+    assert.deepEqual(vista.tarjetasRenderizadas.map((t: any) => t.especialidad), [
+      'Pediatría',
+      'Clínica médica',
+      'Traumatología y ortopedia',
+    ])
+    assert.deepEqual(vista.tarjetasRenderizadas.map((t: any) => t.profesional), [
+      'Dr./Dra. Ana Pérez · Pediatría',
+      'Dr./Dra. Juan Carlos Rossi · Clínica médica',
+      'Dr./Dra. Martín Gómez · Traumatología y ortopedia',
+    ])
+  })
+
+  await test('Esc.17: El body de respuesta y los mensajes de error respetan el contrato exacto del endpoint', () => {
+    const db = crearBaseDatos()
+    registrarAtencionPorMedicoUS38(db, SESION_MEDICO_1, 'pac_A', {
+      diagnosticoPrincipal: 'Contractura muscular dorsal',
+      tipoDiagnostico: 'DEFINITIVO',
+    })
+
+    const res = consultarHistorialClinicoPacienteEndpoint(db, SESION_PACIENTE_A)
+    assert.deepEqual(Object.keys(res.body).sort(), ['atenciones', 'ok', 'success'])
+    assert.ok(!('paciente' in res.body))
+    assert.ok(!('message' in res.body))
+
+    const sinSesion = consultarHistorialClinicoPacienteEndpoint(db, null)
+    assert.equal(sinSesion.status, 401)
+    assert.equal(sinSesion.body.error, 'No autorizado: sesión de paciente no encontrada.')
+
+    const rolIncorrecto = consultarHistorialClinicoPacienteEndpoint(db, SESION_MEDICO_1)
+    assert.equal(rolIncorrecto.status, 403)
+    assert.equal(rolIncorrecto.body.error, 'Acceso denegado: se requiere perfil de paciente.')
+
+    const sesionSinFicha: SesionMock = {
+      id: 'pac_sin_ficha',
+      nombre: 'Sin',
+      apellido: 'Ficha',
+      rol: 'PACIENTE',
+    }
+    const sinFicha = consultarHistorialClinicoPacienteEndpoint(db, sesionSinFicha)
+    assert.equal(sinFicha.status, 404)
+    assert.equal(sinFicha.body.error, 'No se encontró un registro de paciente asociado a la sesión actual.')
+
+    db.simularCaidaBaseDeDatos = true
+    const fallo = consultarHistorialClinicoPacienteEndpoint(db, SESION_PACIENTE_A)
+    assert.equal(fallo.status, 500)
+    assert.equal(fallo.body.error, 'No se pudo consultar el historial clínico en este momento.')
+    assert.deepEqual(Object.keys(fallo.body).sort(), ['error', 'ok', 'success'])
+  })
+
+  await test('Esc.18: El fetch del cliente usa URL/cache exactos, muestra el error y reintenta sin duplicar tarjetas', () => {
+    const db = crearBaseDatos()
+    registrarAtencionPorMedicoUS38(
+      db,
+      SESION_MEDICO_1,
+      'pac_A',
+      {
+        diagnosticoPrincipal: 'Registro inicial del servidor',
+        tipoDiagnostico: 'DEFINITIVO',
+      },
+      new Date('2026-11-20T10:00:00.000Z')
+    )
+
+    const inicialRes = consultarHistorialClinicoPacienteEndpoint(db, SESION_PACIENTE_A)
+    const inicial = simularFetchHistorial(inicialRes, inicialRes.body.atenciones)
+    assert.equal(inicial.url, '/api/pacientes/historia-clinica')
+    assert.deepEqual(inicial.init, { method: 'GET', cache: 'no-store' })
+    assert.equal(inicial.estadoUI, 'success')
+    assert.equal(inicial.tarjetasRenderizadas.length, 1)
+    assert.equal(inicial.atencionesIniciales, 1)
+    assert.equal(inicial.atencionesFinales, 1)
+
+    db.simularCaidaBaseDeDatos = true
+    const fallido = simularFetchHistorial(
+      consultarHistorialClinicoPacienteEndpoint(db, SESION_PACIENTE_A),
+      inicialRes.body.atenciones
+    )
+    assert.equal(fallido.estadoUI, 'error')
+    assert.equal(fallido.mensajeError, 'No se pudo consultar el historial clínico en este momento.')
+    assert.equal(fallido.permiteReintentar, true)
+    assert.equal(fallido.botonReintentar, 'Reintentar')
+    assert.equal(fallido.tarjetasRenderizadas.length, 0)
+
+    db.simularCaidaBaseDeDatos = false
+    registrarAtencionPorMedicoUS38(
+      db,
+      SESION_MEDICO_2,
+      'pac_A',
+      {
+        diagnosticoPrincipal: 'Segundo registro tras reintento',
+        tipoDiagnostico: 'PRESUNTIVO',
+      },
+      new Date('2026-11-21T10:00:00.000Z')
+    )
+    const reintentadoRes = consultarHistorialClinicoPacienteEndpoint(db, SESION_PACIENTE_A)
+    const reintentado = simularFetchHistorial(reintentadoRes, inicialRes.body.atenciones)
+    assert.equal(reintentado.estadoUI, 'success')
+    assert.equal(reintentado.mensajeError, null)
+    assert.equal(reintentado.tarjetasRenderizadas.length, 2)
+    assert.equal(reintentado.contador, '2 atenciones registradas')
+    assert.equal(reintentado.atencionesIniciales, 1)
+    assert.equal(reintentado.atencionesFinales, 2)
+    assert.deepEqual(
+      reintentado.tarjetasRenderizadas.map((t: any) => t.diagnosticoPrincipal),
+      ['Segundo registro tras reintento', 'Registro inicial del servidor']
+    )
+  })
+
+  console.log('\n=== TODAS LAS PRUEBAS DE US-39 PASARON EXITOSAMENTE (18/18) ===\n')
 }
 
 runAllTests().catch((err) => {
