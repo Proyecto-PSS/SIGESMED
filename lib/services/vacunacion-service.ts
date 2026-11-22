@@ -35,6 +35,7 @@ export interface RegistrarMovimientoParams extends DatosMovimientoStockInput {
 export interface AsignarTurnoParams extends DatosAsignarTurnoInput {
   idTurnoVacunacion: string
   idEnfermero?: string
+  seleccionarLoteAutomaticamente?: boolean
 }
 
 export interface CrearTurnoExpressParams {
@@ -45,6 +46,15 @@ export interface CrearTurnoExpressParams {
   idPaciente?: string
   idLote?: string
   idempotencyKey?: string
+}
+
+export interface HabilitarDiaVacunacionInput {
+  idVacuna: string
+  fecha: string // YYYY-MM-DD
+  horaDesde: string // HH:mm
+  horaHasta: string // HH:mm
+  duracionMinutos?: number
+  horariosHabilitados?: string[]
 }
 
 export class VacunacionService {
@@ -111,6 +121,11 @@ export class VacunacionService {
           where: { estado: 'CONFIRMADO' },
           select: { idTurnoVacunacion: true },
         },
+        alertas: {
+          where: { estado: 'PENDIENTE' },
+          orderBy: { enviadaAt: 'desc' },
+          take: 1,
+        },
       },
       orderBy: { nombre: 'asc' },
     })
@@ -124,6 +139,13 @@ export class VacunacionService {
       umbralAlerta: v.umbralAlerta,
       stockDisponible: v.stock,
       turnosComprometidos: v.turnos.length,
+      alertaActiva: v.alertas && v.alertas.length > 0
+        ? {
+            idAlerta: v.alertas[0].idAlerta,
+            estado: v.alertas[0].estado,
+            enviadaAt: v.alertas[0].enviadaAt.toISOString(),
+          }
+        : null,
       lotes: v.lotes.map((l) => ({
         idLote: l.idLote,
         numeroLote: l.numeroLote,
@@ -250,7 +272,65 @@ export class VacunacionService {
         },
       })
 
+      // Si el nuevo stock supera el umbral, se resuelven las alertas pendientes de esta vacuna.
+      if (stockNuevo >= vacuna.umbralAlerta) {
+        await tx.alertaStockVacuna.updateMany({
+          where: { idVacuna, estado: 'PENDIENTE' },
+          data: { estado: 'RESUELTA', resueltaAt: new Date() },
+        })
+      }
+
       return { vacuna: { ...vacuna, stock: stockNuevo }, sinCambios: false }
+    })
+  }
+
+  /**
+   * US-34: emisión de alerta de stock bajo para una vacuna cuando su stock actual es menor al umbral.
+   * Notifica a Administración y previene la emisión de alertas duplicadas si ya existe una alerta activa/pendiente.
+   */
+  static async emitirAlertaStock(idVacuna: string, idEnfermero?: string) {
+    return prisma.$transaction(async (tx) => {
+      const vacuna = await tx.vacuna.findUnique({
+        where: { idVacuna },
+        include: {
+          alertas: {
+            where: { estado: 'PENDIENTE' },
+            take: 1,
+          },
+        },
+      })
+
+      if (!vacuna) {
+        throw errorConEstado('La vacuna indicada no existe.', 404, 'VACCINE_NOT_FOUND')
+      }
+
+      if (vacuna.stock >= vacuna.umbralAlerta) {
+        throw errorConEstado(
+          `No es posible emitir la alerta: el stock actual (${vacuna.stock} dosis) no es menor al umbral de alerta (${vacuna.umbralAlerta} dosis).`,
+          400,
+          'STOCK_NOT_CRITICAL'
+        )
+      }
+
+      if (vacuna.alertas.length > 0) {
+        throw errorConEstado(
+          'Ya existe una alerta enviada para esta vacuna.',
+          409,
+          'ALERT_ALREADY_EXISTS'
+        )
+      }
+
+      const alerta = await tx.alertaStockVacuna.create({
+        data: {
+          idVacuna: vacuna.idVacuna,
+          idEnfermero,
+          estado: 'PENDIENTE',
+          stockAlMomento: vacuna.stock,
+          umbralAlMomento: vacuna.umbralAlerta,
+        },
+      })
+
+      return { alerta, vacuna }
     })
   }
 
@@ -649,7 +729,7 @@ export class VacunacionService {
       throw err
     }
 
-    const { idTurnoVacunacion, idEnfermero } = params
+    const { idTurnoVacunacion, idEnfermero, seleccionarLoteAutomaticamente = false } = params
     const { idPaciente, idVacuna, idLote, idempotencyKey } = validacion.datos
 
     // 1. Soporte de idempotencia: si la misma clave ya asignó este turno a este paciente
@@ -706,7 +786,7 @@ export class VacunacionService {
       }
 
       const vacunaObjetivoId = idVacuna || turno.idVacuna
-      const loteObjetivoId = idLote || turno.idLote
+      let loteObjetivoId = seleccionarLoteAutomaticamente ? undefined : idLote || turno.idLote
 
       // C. ACTUALIZACIÓN CONDICIONAL ATÓMICA DE STOCK EN VACUNA (RF-20.6)
       // Solo actualiza si stock >= 1 en el instante exacto de ejecución en PostgreSQL
@@ -727,8 +807,39 @@ export class VacunacionService {
         throw err
       }
 
-      // D. Si se especificó un lote, descontar condicionalmente del lote
-      if (loteObjetivoId) {
+      // D. US-36: al reservar desde el portal del paciente, elegir el lote vigente
+      // que vence primero y descontarlo dentro de esta misma transacción.
+      if (seleccionarLoteAutomaticamente) {
+        const lotesElegibles = await tx.loteVacuna.findMany({
+          where: {
+            idVacuna: vacunaObjetivoId,
+            stock: { gt: 0 },
+            OR: [{ vencimiento: null }, { vencimiento: { gte: turno.fecha } }],
+          },
+          orderBy: [{ vencimiento: 'asc' }, { createdAt: 'asc' }],
+          select: { idLote: true },
+        })
+
+        for (const lote of lotesElegibles) {
+          const actualizacionLote = await tx.loteVacuna.updateMany({
+            where: { idLote: lote.idLote, stock: { gte: 1 } },
+            data: { stock: { decrement: 1 } },
+          })
+
+          if (actualizacionLote.count === 1) {
+            loteObjetivoId = lote.idLote
+            break
+          }
+        }
+
+        if (!loteObjetivoId) {
+          const err = new Error('No hay dosis disponibles en lotes vigentes para la fecha seleccionada.')
+          ;(err as any).statusCode = 409
+          ;(err as any).code = 'NO_ELIGIBLE_BATCH'
+          throw err
+        }
+      } else if (loteObjetivoId) {
+        // Los flujos de enfermería conservan la asignación explícita del lote.
         const updateLote = await tx.loteVacuna.updateMany({
           where: {
             idLote: loteObjetivoId,
@@ -900,6 +1011,106 @@ export class VacunacionService {
   }
 
   /**
+   * US-35: Habilitación del día y turnos de vacunación.
+   * Valida stock disponible (si stock = 0 o insuficiente, bloquea la habilitación con error).
+   * Genera los slots en estado DISPONIBLE para la fecha y rango horario configurados.
+   */
+  static async habilitarDiaVacunacion(input: HabilitarDiaVacunacionInput, idEnfermero: string) {
+    const { idVacuna, fecha, horaDesde, horaHasta, duracionMinutos = 15, horariosHabilitados } = input
+
+    if (!idVacuna || !fecha || !horaDesde || !horaHasta) {
+      throw errorConEstado('Debe seleccionar vacuna, fecha y rango horario completo.', 400, 'MISSING_FIELDS')
+    }
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+      throw errorConEstado('Formato de fecha inválido (debe ser YYYY-MM-DD).', 400, 'INVALID_DATE')
+    }
+
+    const [desdeH, desdeM] = horaDesde.split(':').map(Number)
+    const [hastaH, hastaM] = horaHasta.split(':').map(Number)
+    const minutosInicio = desdeH * 60 + desdeM
+    const minutosFin = hastaH * 60 + hastaM
+
+    if (minutosInicio >= minutosFin) {
+      throw errorConEstado('El horario de inicio debe ser anterior al horario de fin.', 400, 'INVALID_TIME_RANGE')
+    }
+
+    const duracion = Number(duracionMinutos) || 15
+    if (duracion < 5 || duracion > 120) {
+      throw errorConEstado('La duración del turno debe estar entre 5 y 120 minutos.', 400, 'INVALID_DURATION')
+    }
+
+    const vacuna = await prisma.vacuna.findUnique({
+      where: { idVacuna },
+    })
+
+    if (!vacuna) {
+      throw errorConEstado('La vacuna seleccionada no existe.', 404, 'VACCINE_NOT_FOUND')
+    }
+
+    // Regla US-35 (Escenario 2): prevención de habilitación por falta de stock
+    if (vacuna.stock <= 0) {
+      throw errorConEstado(
+        `La vacuna seleccionada no cuenta con dosis disponibles (Stock: ${vacuna.stock} dosis). No es posible habilitar agenda ni turnos de reserva hasta que se recepcione stock.`,
+        400,
+        'INSUFFICIENT_STOCK'
+      )
+    }
+
+    // Generar los slots programables
+    const todosSlots: string[] = []
+    for (let min = minutosInicio; min < minutosFin; min += duracion) {
+      const h = Math.floor(min / 60)
+      const m = min % 60
+      todosSlots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`)
+    }
+
+    const slots = Array.isArray(horariosHabilitados) && horariosHabilitados.length > 0
+      ? horariosHabilitados.filter((h) => todosSlots.includes(h))
+      : todosSlots
+
+    if (slots.length === 0) {
+      throw errorConEstado('No se seleccionó ningún turno para habilitar en el rango indicado.', 400, 'NO_SLOTS_SELECTED')
+    }
+
+    if (slots.length > vacuna.stock) {
+      throw errorConEstado(
+        `La cantidad de turnos a habilitar (${slots.length}) supera el stock físico disponible (${vacuna.stock} dosis).`,
+        400,
+        'SLOTS_EXCEED_STOCK'
+      )
+    }
+
+    const fechaDate = new Date(`${fecha}T00:00:00.000Z`)
+
+    const turnosParaCrear = slots.map((hora) => ({
+      idEnfermero,
+      idVacuna: vacuna.idVacuna,
+      idLote: null,
+      fecha: fechaDate,
+      hora,
+      estado: 'DISPONIBLE' as const,
+    }))
+
+    const resultado = await prisma.turnoVacunacion.createMany({
+      data: turnosParaCrear,
+      skipDuplicates: true,
+    })
+
+    return {
+      ok: true,
+      turnosHabilitados: resultado.count,
+      totalSolicitados: slots.length,
+      fecha,
+      vacuna: {
+        idVacuna: vacuna.idVacuna,
+        nombre: vacuna.nombre,
+        stock: vacuna.stock,
+      },
+    }
+  }
+
+  /**
    * Obtiene el historial de movimientos de inventario de vacunas.
    */
   static async obtenerHistorialMovimientos(idVacuna?: string, limite: number = 30) {
@@ -915,6 +1126,95 @@ export class VacunacionService {
       },
       orderBy: { createdAt: 'desc' },
       take: limite,
+    })
+  }
+
+  /**
+   * US-36: Lista vacunas con stock > 0 que tengan al menos un turno DISPONIBLE
+   * en fechas futuras. Incluye los días habilitados (fechas distintas) y la cantidad
+   * de slots disponibles por día para que el paciente pueda elegir.
+   */
+  static async obtenerVacunasConTurnosDisponibles() {
+    const hoy = new Date()
+    hoy.setUTCHours(0, 0, 0, 0)
+
+    const vacunas = await prisma.vacuna.findMany({
+      where: {
+        stock: { gt: 0 },
+        turnos: {
+          some: {
+            estado: 'DISPONIBLE',
+            fecha: { gte: hoy },
+          },
+        },
+      },
+      include: {
+        lotes: {
+          where: { stock: { gt: 0 } },
+          select: { vencimiento: true },
+        },
+        turnos: {
+          where: {
+            estado: 'DISPONIBLE',
+            fecha: { gte: hoy },
+          },
+          select: {
+            idTurnoVacunacion: true,
+            fecha: true,
+            hora: true,
+            enfermero: { select: { nombre: true, apellido: true } },
+          },
+          orderBy: [{ fecha: 'asc' }, { hora: 'asc' }],
+        },
+      },
+      orderBy: { nombre: 'asc' },
+    })
+
+    return vacunas.map((v) => {
+      // Agrupar slots por fecha
+      const diasMap = new Map<
+        string,
+        { fecha: string; slots: { idTurnoVacunacion: string; hora: string }[] }
+      >()
+      for (const t of v.turnos) {
+        const tieneLoteVigente = v.lotes.some(
+          (lote) => lote.vencimiento === null || lote.vencimiento >= t.fecha
+        )
+
+        if (!tieneLoteVigente) continue
+
+        const fechaStr = t.fecha.toISOString().slice(0, 10)
+        if (!diasMap.has(fechaStr)) {
+          diasMap.set(fechaStr, { fecha: fechaStr, slots: [] })
+        }
+        diasMap.get(fechaStr)!.slots.push({
+          idTurnoVacunacion: t.idTurnoVacunacion,
+          hora: t.hora,
+        })
+      }
+      return {
+        idVacuna: v.idVacuna,
+        nombre: v.nombre,
+        stock: v.stock,
+        dias: Array.from(diasMap.values()),
+      }
+    }).filter((vacuna) => vacuna.dias.length > 0)
+  }
+
+  /**
+   * US-36: Reserva un turno de vacunación para un paciente de forma atómica.
+   * Delega en asignarTurnoVacunacion para mantener la validación de concurrencia.
+   */
+  static async reservarTurnoVacunacionPaciente(
+    idTurnoVacunacion: string,
+    idPaciente: string,
+    idempotencyKey?: string
+  ) {
+    return VacunacionService.asignarTurnoVacunacion({
+      idTurnoVacunacion,
+      idPaciente,
+      idempotencyKey,
+      seleccionarLoteAutomaticamente: true,
     })
   }
 }

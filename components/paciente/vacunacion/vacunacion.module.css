@@ -1,0 +1,155 @@
+/* Estilos del flujo de reserva de turno de vacunación (US-36). */
+
+/* ---- Secciones del formulario de selección ---- */
+.seccion {
+  margin-top: 2rem;
+}
+
+.seccionTitulo {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-tinta);
+  margin-bottom: 0.85rem;
+}
+
+.seccionTexto {
+  margin-top: 0.3rem;
+  color: var(--color-tinta-suave);
+  font-size: 0.9rem;
+  margin-bottom: 1.25rem;
+}
+
+/* ---- Listas de opciones ---- */
+.listaVacunas {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
+}
+
+.listaFechas {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+}
+
+.opcionVacuna {
+  width: 100%;
+  text-align: left;
+}
+
+/* ---- Grilla de horarios ---- */
+.listaHorarios {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.botonHorario {
+  padding: 0.5rem 1rem;
+  border: 1px solid #d9dcd6;
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--color-tinta);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.botonHorario:hover {
+  border-color: var(--color-primario);
+}
+
+.botonHorarioActivo {
+  border-color: var(--color-primario);
+  background: #f3f9f9;
+  box-shadow: 0 0 0 1px var(--color-primario);
+  color: var(--color-primario);
+  font-weight: 700;
+}
+
+/* ---- CTA ---- */
+.ctaContenedor {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #efefe9;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.ctaBoton {
+  min-width: 11rem;
+}
+
+/* ---- Error global (ej: turno tomado en concurrencia) ---- */
+.errorGlobal {
+  margin-bottom: 1rem;
+}
+
+/* ---- Confirmación ---- */
+.confirmacionContenedor {
+  max-width: 36rem;
+}
+
+.resumenCard {
+  margin-top: 1.5rem;
+  padding: clamp(1.25rem, 2vw, 1.75rem);
+  background: #ffffff;
+  border: 1px solid #e4e4dd;
+  border-radius: 10px;
+}
+
+.confirmacionAcciones {
+  margin-top: 2rem;
+}
+
+/* ---- Éxito ---- */
+.exitoContenedor {
+  max-width: 32rem;
+  margin: 3rem auto;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.exitoIcono {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 50%;
+  background: #e3f3e8;
+  color: #1f5a35;
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+.exitoTitulo {
+  font-family: var(--font-display), Georgia, serif;
+  font-weight: 700;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  color: var(--color-tinta);
+  margin-top: 0.5rem;
+}
+
+.exitoTexto {
+  color: var(--color-tinta-suave);
+  font-size: 0.95rem;
+}
+
+.exitoDatos {
+  width: 100%;
+  text-align: left;
+  margin-top: 1.5rem;
+  padding: 1.25rem 1.5rem;
+  background: #ffffff;
+  border: 1px solid #e4e4dd;
+  border-radius: 10px;
+}
+
+.exitoAyuda {
+  font-size: 0.85rem;
+  color: var(--color-tinta-suave);
+  margin-top: 0.5rem;
+}
